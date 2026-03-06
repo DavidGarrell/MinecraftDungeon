@@ -1,0 +1,230 @@
+zones:
+  farm:
+    display-name: "Farm Zone"
+    order: 1
+    unlock-price: "0"
+    total-stages: 10
+    mobs-per-stage: 20
+    spawn:
+      world: "world"
+      x: 0.5
+      y: 70
+      z: 0.5
+      yaw: 0
+      pitch: 0
+    area:
+      world: "world"
+      min:
+        x: -40
+        y: 60
+        z: -40
+      max:
+        x: 40
+        y: 120
+        z: 40
+    stages:
+      "1":
+        unlock-price: "0"
+        mobs:
+          llama_common:
+            entity: LLAMA
+            rarity: COMMON
+            weight: 70
+            health: "1000"
+            rewards:
+              money: "10"
+              souls: "1"
+              essence: "1"
+              shards: "0"
+      "2":
+        unlock-price: "100"
+        mobs:
+          cow_common:
+            entity: COW
+            rarity: COMMON
+            weight: 70
+            health: "2500"
+            rewards:
+              money: "20"
+              souls: "2"
+              essence: "2"
+              shards: "0"
+      "3":
+        unlock-price: "500"
+        mobs:
+          pig_common:
+            entity: PIG
+            rarity: COMMON
+            weight: 70
+            health: "5000"
+            rewards:
+              money: "30"
+              souls: "3"
+              essence: "3"
+              shards: "1"
+      "4":
+        unlock-price: "1000"
+        mobs:
+          zombie_rare:
+            entity: ZOMBIE
+            rarity: RARE
+            weight: 50
+            health: "12000"
+            rewards:
+              money: "50"
+              souls: "5"
+              essence: "5"
+              shards: "1"
+      "5":
+        unlock-price: "2500"
+        mobs:
+          skeleton_rare:
+            entity: SKELETON
+            rarity: RARE
+            weight: 50
+            health: "25000"
+            rewards:
+              money: "90"
+              souls: "8"
+              essence: "8"
+              shards: "2"
+      "6":
+        unlock-price: "5000"
+        mobs:
+          blaze_epic:
+            entity: BLAZE
+            rarity: EPIC
+            weight: 30
+            health: "60000"
+            rewards:
+              money: "140"
+              souls: "15"
+              essence: "15"
+              shards: "3"
+      "7":
+        unlock-price: "10000"
+        mobs:
+          ravager_epic:
+            entity: RAVAGER
+            rarity: EPIC
+            weight: 20
+            health: "150000"
+            rewards:
+              money: "220"
+              souls: "22"
+              essence: "22"
+              shards: "4"
+      "8":
+        unlock-price: "25000"
+        mobs:
+          warden_legendary:
+            entity: WARDEN
+            rarity: LEGENDARY
+            weight: 10
+            health: "500000"
+            rewards:
+              money: "380"
+              souls: "40"
+              essence: "40"
+              shards: "8"
+      "9":
+        unlock-price: "50000"
+        mobs:
+          wither_legendary:
+            entity: WITHER_SKELETON
+            rarity: LEGENDARY
+            weight: 10
+            health: "1300000"
+            rewards:
+              money: "600"
+              souls: "60"
+              essence: "60"
+              shards: "12"
+      "10":
+        unlock-price: "100000"
+        mobs:
+          final_boss:
+            entity: WITHER
+            rarity: BOSS
+            weight: 5
+            health: "999999999999999999999999"
+            rewards:
+              money: "2000"
+              souls: "250"
+              essence: "250"
+              shards: "50"
+
+  forest:
+    display-name: "Forest Zone"
+    order: 2
+    unlock-price: "1000000"
+    total-stages: 10
+    mobs-per-stage: 20
+    spawn:
+      world: "world"
+      x: 120.5
+      y: 70
+      z: 0.5
+      yaw: 0
+      pitch: 0
+    area:
+      world: "world"
+      min:
+        x: 80
+        y: 60
+        z: -40
+      max:
+        x: 160
+        y: 120
+        z: 40
+    stages:
+      "1":
+        unlock-price: "0"
+        mobs:
+          spider_common:
+            entity: SPIDER
+            rarity: COMMON
+            weight: 70
+            health: "2000000"
+            rewards:
+              money: "3000"
+              souls: "400"
+              essence: "400"
+              shards: "80"
+      "2":
+        unlock-price: "200000"
+      "3":
+        unlock-price: "400000"
+      "4":
+        unlock-price: "800000"
+      "5":
+        unlock-price: "1200000"
+      "6":
+        unlock-price: "1800000"
+      "7":
+        unlock-price: "2600000"
+      "8":
+        unlock-price: "3800000"
+      "9":
+        unlock-price: "5200000"
+      "10":
+        unlock-price: "7500000"
+
+afk-mob:
+  enabled: true
+  entity: OCELOT
+  rarity: LEGENDARY
+  health: "1000000000000000000000"
+  hits-per-second: 2.0
+  location:
+    world: "world"
+    x: 0.5
+    y: 70.0
+    z: 0.5
+    yaw: 0
+    pitch: 0
+  rewards:
+    money: "500"
+    souls: "25"
+    essence: "25"
+    shards: "5"
