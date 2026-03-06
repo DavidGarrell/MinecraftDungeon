@@ -6,6 +6,7 @@ import de.fleaqx.minecraftDungeons.runtime.VirtualHealthService;
 import de.fleaqx.minecraftDungeons.sword.SwordService;
 import de.fleaqx.minecraftDungeons.sword.ui.SwordMenuService;
 import de.fleaqx.minecraftDungeons.ui.ZoneMenuService;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -150,6 +151,10 @@ public class DungeonListener implements Listener {
     public void onDropSword(PlayerDropItemEvent event) {
         if (swordService.isManagedSword(event.getItemDrop().getItemStack())) {
             event.setCancelled(true);
+            int upgrades = swordService.buyBest(event.getPlayer());
+            event.getPlayer().sendMessage(upgrades > 0
+                    ? ChatColor.GREEN + "Bought best sword upgrades: " + upgrades
+                    : ChatColor.RED + "No affordable sword upgrade.");
         }
     }
 
@@ -163,5 +168,3 @@ public class DungeonListener implements Listener {
         return null;
     }
 }
-
-

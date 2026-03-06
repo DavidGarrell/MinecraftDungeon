@@ -94,12 +94,15 @@ public class SwordMenuService {
             ItemStack item = new ItemStack(def.material());
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName((tier <= currentTier ? ChatColor.GREEN : ChatColor.RED) + def.name() + " " + roman(tier));
+                meta.setDisplayName((tier <= currentTier ? ChatColor.GREEN : ChatColor.DARK_PURPLE) + def.name() + " " + roman(tier));
                 List<String> lore = new ArrayList<>();
-                lore.add(ChatColor.GRAY + "Damage: " + ChatColor.RED + NumberFormat.compact(swordService.tierDamage(swordId, tier)));
-                lore.add(ChatColor.GRAY + "Price: " + ChatColor.GREEN + NumberFormat.compact(swordService.tierPrice(swordId, tier)) + " Money");
-                lore.add(ChatColor.GRAY + "Tier: " + ChatColor.WHITE + tier + "/5");
-                lore.add(tier <= currentTier ? ChatColor.GREEN + "UNLOCKED" : ChatColor.YELLOW + "Click to unlock/select");
+                lore.add(ChatColor.GREEN + "Information");
+                lore.add(ChatColor.DARK_GREEN + "| " + ChatColor.GRAY + "Damage: " + ChatColor.RED + NumberFormat.compact(swordService.tierDamage(swordId, tier)));
+                lore.add(ChatColor.DARK_GREEN + "| " + ChatColor.GRAY + "Price: " + ChatColor.GREEN + NumberFormat.compact(swordService.tierPrice(swordId, tier)));
+                lore.add(ChatColor.DARK_GREEN + "| " + ChatColor.GRAY + "Tier: " + ChatColor.AQUA + tier + "/5");
+                lore.add(" ");
+                lore.add(tier <= currentTier ? ChatColor.GREEN + "UNLOCKED" : ChatColor.RED + "LOCKED");
+                lore.add(ChatColor.GRAY + "Click to purchase this Sword");
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
@@ -133,13 +136,14 @@ public class SwordMenuService {
                 lore.add(ChatColor.GRAY + line);
             }
             lore.add(" ");
-            lore.add(ChatColor.GRAY + "Type: " + ChatColor.WHITE + def.category().name());
+            lore.add(ChatColor.AQUA + "Type: " + ChatColor.WHITE + capitalize(def.category().name()));
             if (def.damageMultiplier() > 0.0D) {
-                lore.add(ChatColor.GRAY + "Damage: " + ChatColor.RED + String.format("%.1fx", def.damageMultiplier()));
+                lore.add(ChatColor.AQUA + "Damage: " + ChatColor.RED + String.format("%.1fx", def.damageMultiplier()));
             }
-            lore.add(ChatColor.GRAY + "Level: " + ChatColor.RED + level + ChatColor.DARK_GRAY + " / " + ChatColor.RED + def.maxLevel());
-            lore.add(ChatColor.GRAY + "Base Activation Chance: " + ChatColor.RED + chanceWithOdds(def.baseChance()));
-            lore.add(ChatColor.GRAY + "Your Activation Chance: " + ChatColor.RED + chanceWithOdds(enchantService.activationChance(player, def)));
+            lore.add(ChatColor.AQUA + "Information:");
+            lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Level: " + ChatColor.AQUA + level + ChatColor.DARK_GRAY + " / " + ChatColor.AQUA + def.maxLevel());
+            lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Base Activation Chance: " + ChatColor.RED + chanceWithOdds(def.baseChance()));
+            lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Your Activation Chance: " + ChatColor.RED + chanceWithOdds(enchantService.activationChance(player, def)));
             lore.add(maxed ? ChatColor.GREEN + "ENCHANT MAXED" : ChatColor.YELLOW + "Click to open enchant menu");
 
             inv.setItem(GRID_SLOTS[i], item(def.icon(), (maxed ? ChatColor.GREEN : ChatColor.AQUA) + def.displayName(), lore));
@@ -389,6 +393,11 @@ public class SwordMenuService {
         }
         long oneIn = Math.max(1L, Math.round(1.0D / safe));
         return String.format("%.3f%% (1 in %d)", safe * 100.0D, oneIn);
+    }
+
+    private String capitalize(String value) {
+        String lower = value.toLowerCase();
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
     private record Context(String menu, int page, int swordId, EnchantCategory category, String enchantId) {

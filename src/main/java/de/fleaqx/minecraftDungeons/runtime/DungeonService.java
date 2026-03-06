@@ -19,8 +19,6 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
-import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.TextComponent;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -229,6 +227,7 @@ public class DungeonService {
         clearSessionMobs(session);
         session.zone(zone);
         session.currentStage(stage);
+        session.stageKills(0);
         spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
     }
 
@@ -260,11 +259,7 @@ public class DungeonService {
 
         giveRewards(player, result.mob().rewards());
         String rewardText = ChatColor.GREEN + "+" + NumberFormat.compact(result.mob().rewards().money()) + " Money";
-        try {
-            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(rewardText));
-        } catch (Throwable ignored) {
-            player.sendMessage(rewardText);
-        }
+        player.sendTitle("", rewardText, 0, 20, 10);
 
         PlayerDungeonSession session = sessions.get(player.getUniqueId());
         if (session == null) {
@@ -281,32 +276,39 @@ public class DungeonService {
             return new AttackResult(true, true);
         }
 
-        if (remainingStageMobCount(session) > 0) {
-            return new AttackResult(true, true);
-        }
-
-        int nextStage = session.currentStage() + 1;
+        session.incrementStageKills();
         ZoneDefinition zone = session.zone();
         if (zone == null) {
             return new AttackResult(true, true);
         }
 
-        if (nextStage > zone.totalStages()) {
-            player.sendMessage(ChatColor.GOLD + "Zone " + zone.displayName() + " completed.");
-            session.currentStage(zone.totalStages());
+        if (session.stageKills() >= Math.max(1, zone.mobsPerStage())) {
+            int nextStage = session.currentStage() + 1;
+            if (nextStage > zone.totalStages()) {
+                player.sendMessage(ChatColor.GOLD + "Zone " + zone.displayName() + " completed.");
+                session.currentStage(zone.totalStages());
+                session.stageKills(0);
+                spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
+                return new AttackResult(true, true);
+            }
+
+            int unlockedStage = unlockedStage(player, zone.id());
+            if (nextStage > unlockedStage) {
+                player.sendMessage(ChatColor.YELLOW + "Stage " + nextStage + " is locked. Use /zone to unlock it.");
+                session.currentStage(unlockedStage);
+                session.stageKills(0);
+                spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
+                return new AttackResult(true, true);
+            }
+
+            session.currentStage(nextStage);
+            session.stageKills(0);
+            player.sendMessage(ChatColor.GREEN + "Stage " + nextStage + " started.");
+            spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
             return new AttackResult(true, true);
         }
 
-        int unlockedStage = unlockedStage(player, zone.id());
-        if (nextStage > unlockedStage) {
-            player.sendMessage(ChatColor.YELLOW + "Stage " + nextStage + " is locked. Use /zone to unlock it.");
-            session.currentStage(unlockedStage);
-            return new AttackResult(true, true);
-        }
-
-        session.currentStage(nextStage);
-        player.sendMessage(ChatColor.GREEN + "Stage " + nextStage + " started.");
-        spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
+        spawnReplacementMob(player, session);
         return new AttackResult(true, true);
     }
 
@@ -412,6 +414,7 @@ public class DungeonService {
             session.zone(zone);
             int selected = selectedStage(player, zone.id());
             session.currentStage(selected);
+            session.stageKills(0);
             player.sendMessage(ChatColor.AQUA + "Entered zone: " + zone.displayName() + " | Stage " + selected);
             spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
         }
@@ -429,10 +432,13 @@ public class DungeonService {
             return;
         }
 
+        List<MobEntry> candidateMobs = stage.mobs();
+
         clearSessionMobs(session);
+        session.stageKills(0);
 
         MobEntry preferredMob = lastCombatMobTemplates.get(player.getUniqueId());
-        boolean canUsePreferredMob = preferredMob != null && stage.mobs().stream().anyMatch(m -> m.id().equalsIgnoreCase(preferredMob.id()));
+        boolean canUsePreferredMob = preferredMob != null && candidateMobs.stream().anyMatch(m -> m.id().equalsIgnoreCase(preferredMob.id()));
         int stageMobCount = Math.max(1, zone.mobsPerStage());
 
         for (int i = 0; i < stageMobCount; i++) {
@@ -440,7 +446,7 @@ public class DungeonService {
             if (i == 0 && canUsePreferredMob) {
                 chosen = applyStageScaling(preferredMob, zone, session.currentStage());
             } else {
-                MobEntry weighted = pickWeighted(stage.mobs(), zone, session.currentStage());
+                MobEntry weighted = pickWeighted(candidateMobs, zone, session.currentStage());
                 chosen = applyStageScaling(weighted, zone, session.currentStage());
             }
 
@@ -552,6 +558,36 @@ public class DungeonService {
         spawnManagedMob(player, session, 1, afkMobDefinition.mob(), location);
     }
 
+    private void spawnReplacementMob(Player player, PlayerDungeonSession session) {
+        ZoneDefinition zone = session.zone();
+        if (zone == null) {
+            return;
+        }
+
+        StageDefinition stage = zone.stageByIndex(session.currentStage());
+        if (stage == null || stage.mobs().isEmpty()) {
+            return;
+        }
+
+        List<MobEntry> candidateMobs = stage.mobs();
+        MobEntry weighted = pickWeighted(candidateMobs, zone, session.currentStage());
+        MobEntry chosen = applyStageScaling(weighted, zone, session.currentStage());
+        Location lastLocation = lastCombatLocations.get(player.getUniqueId());
+
+        Location spawnLocation = zone.area().randomSpawnLocation();
+        if (lastLocation != null && zone.area().contains(lastLocation)) {
+            Location nearby = randomNear(lastLocation, 5.0D);
+            if (nearby != null) {
+                spawnLocation = nearby;
+            }
+        }
+
+        if (spawnLocation == null || spawnLocation.getWorld() == null) {
+            return;
+        }
+
+        spawnManagedMob(player, session, session.currentStage(), chosen, spawnLocation);
+    }
 
     private void spawnManagedMob(Player player, PlayerDungeonSession session, int level, MobEntry mob, Location spawnLocation) {
         Entity spawned = spawnLocation.getWorld().spawnEntity(spawnLocation, mob.entityType());
@@ -592,17 +628,6 @@ public class DungeonService {
         double z = base.getZ() + ThreadLocalRandom.current().nextDouble(-radius, radius);
         int y = base.getWorld().getHighestBlockYAt((int) Math.floor(x), (int) Math.floor(z)) + 1;
         return new Location(base.getWorld(), x + 0.5, y, z + 0.5);
-    }
-
-    private int remainingStageMobCount(PlayerDungeonSession session) {
-        int count = 0;
-        for (UUID mobId : session.activeMobs()) {
-            VirtualHealthService.VirtualHealth state = virtualHealthService.get(mobId);
-            if (state != null && state.mob() != null && !isAfkMob(state.mob().id())) {
-                count++;
-            }
-        }
-        return count;
     }
 
     private boolean isAfkMob(String mobId) {
@@ -671,8 +696,6 @@ public class DungeonService {
         }
     }
 }
-
-
 
 
 
