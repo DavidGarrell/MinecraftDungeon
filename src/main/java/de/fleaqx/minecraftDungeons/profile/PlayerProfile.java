@@ -26,6 +26,11 @@ public class PlayerProfile {
     private final Map<String, Boolean> enchantEnabled = new HashMap<>();
     private final Map<String, Boolean> enchantMessageEnabled = new HashMap<>();
 
+    private int perkPoints = 0;
+    private int perkRolls = 0;
+    private String currentPerkId = "none";
+    private int currentPerkLevel = 0;
+
     public PlayerProfile(UUID uuid) {
         this.uuid = uuid;
         for (CurrencyType type : CurrencyType.values()) {
@@ -159,6 +164,60 @@ public class PlayerProfile {
 
     public Map<String, Boolean> enchantMessageEnabledRaw() {
         return enchantMessageEnabled;
+    }
+
+    public int perkPoints() {
+        return perkPoints;
+    }
+
+    public void perkPoints(int perkPoints) {
+        this.perkPoints = Math.max(0, perkPoints);
+    }
+
+    public void addPerkPoints(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        perkPoints = Math.max(0, perkPoints + amount);
+    }
+
+    public boolean removePerkPoints(int amount) {
+        if (amount <= 0) {
+            return true;
+        }
+        if (perkPoints < amount) {
+            return false;
+        }
+        perkPoints -= amount;
+        return true;
+    }
+
+    public int perkRolls() {
+        return perkRolls;
+    }
+
+    public void perkRolls(int perkRolls) {
+        this.perkRolls = Math.max(0, perkRolls);
+    }
+
+    public void incrementPerkRolls() {
+        perkRolls++;
+    }
+
+    public String currentPerkId() {
+        return currentPerkId;
+    }
+
+    public void currentPerkId(String currentPerkId) {
+        this.currentPerkId = currentPerkId == null || currentPerkId.isBlank() ? "none" : currentPerkId.toLowerCase();
+    }
+
+    public int currentPerkLevel() {
+        return currentPerkLevel;
+    }
+
+    public void currentPerkLevel(int currentPerkLevel) {
+        this.currentPerkLevel = Math.max(0, currentPerkLevel);
     }
 
     public Map<Integer, Integer> swordLevelsRaw() {

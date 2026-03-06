@@ -5,6 +5,7 @@ import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.profile.ProfileService;
 import de.fleaqx.minecraftDungeons.runtime.DamageIndicatorService;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
+import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import org.bukkit.ChatColor;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -38,6 +39,7 @@ public class EnchantService {
     private BigInteger xpBase = BigInteger.valueOf(100L);
     private double xpGrowth = 1.15D;
     private double maxActivationChance = 1.0D;
+    private SwordPerkService swordPerkService;
 
     public EnchantService(JavaPlugin plugin, EnchantConfigService configService, ProfileService profileService) {
         this.plugin = plugin;
@@ -53,6 +55,10 @@ public class EnchantService {
         xpBase = configService.toolXpBaseRequirement();
         xpGrowth = configService.toolXpGrowth();
         maxActivationChance = configService.maxActivationChance();
+    }
+
+    public void setSwordPerkService(SwordPerkService swordPerkService) {
+        this.swordPerkService = swordPerkService;
     }
 
     public List<EnchantDefinition> byCategory(EnchantCategory category) {
@@ -107,7 +113,11 @@ public class EnchantService {
 
     public void grantHitXp(Player player) {
         PlayerProfile profile = profile(player);
-        profile.addToolXp(xpPerHit);
+        BigInteger gain = xpPerHit;
+        if (swordPerkService != null) {
+            gain = scaleDamage(gain, swordPerkService.swordXpMultiplier(player));
+        }
+        profile.addToolXp(gain);
         while (profile.toolXp().compareTo(toolXpRequiredNextRaw(profile.toolLevel())) >= 0) {
             BigInteger need = toolXpRequiredNextRaw(profile.toolLevel());
             profile.toolXp(profile.toolXp().subtract(need));
@@ -246,6 +256,9 @@ public class EnchantService {
             return 0.0D;
         }
         double chance = def.baseChance() + (def.chancePerLevel() * level);
+        if (swordPerkService != null) {
+            chance *= swordPerkService.enchantProcMultiplier(player);
+        }
         return Math.max(0.0D, Math.min(maxActivationChance, chance));
     }
 

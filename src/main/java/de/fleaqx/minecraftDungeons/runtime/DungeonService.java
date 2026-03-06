@@ -11,6 +11,7 @@ import de.fleaqx.minecraftDungeons.model.StageDefinition;
 import de.fleaqx.minecraftDungeons.model.ZoneDefinition;
 import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.profile.ProfileService;
+import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -45,6 +46,7 @@ public class DungeonService {
     private final RarityVisualService rarityVisualService;
     private final DamageIndicatorService damageIndicatorService;
     private EnchantService enchantService;
+    private SwordPerkService swordPerkService;
 
     private final Map<String, ZoneDefinition> zones = new HashMap<>();
     private final Map<UUID, PlayerDungeonSession> sessions = new ConcurrentHashMap<>();
@@ -117,6 +119,10 @@ public class DungeonService {
 
     public void setEnchantService(EnchantService enchantService) {
         this.enchantService = enchantService;
+    }
+
+    public void setSwordPerkService(SwordPerkService swordPerkService) {
+        this.swordPerkService = swordPerkService;
     }
 
     public Collection<ZoneDefinition> zones() {
@@ -346,7 +352,8 @@ public class DungeonService {
     public double attackSpeedMultiplier(Player player) {
         double base = profile(player).attackSpeedMultiplier();
         double enchant = enchantService == null ? 1.0D : enchantService.attackSpeedMultiplier(player);
-        return Math.max(0.1D, base * enchant);
+        double perk = swordPerkService == null ? 1.0D : swordPerkService.attackSpeedMultiplier(player);
+        return Math.max(0.1D, base * enchant * perk);
     }
 
     public double hitsPerSecondFor(Player player, UUID entityId) {
@@ -668,10 +675,35 @@ public class DungeonService {
 
     private void giveRewards(Player player, CurrencyBundle rewards) {
         PlayerProfile profile = profile(player);
-        profile.add(CurrencyType.MONEY, rewards.money());
-        profile.add(CurrencyType.SOULS, rewards.souls());
-        profile.add(CurrencyType.ESSENCE, rewards.essence());
+        java.math.BigInteger money = rewards.money();
+        java.math.BigInteger souls = rewards.souls();
+        java.math.BigInteger essence = rewards.essence();
+
+        if (swordPerkService != null) {
+            if (money.compareTo(java.math.BigInteger.ZERO) > 0) {
+                money = scaleByMultiplier(money, swordPerkService.moneyMultiplier(player));
+            }
+            if (souls.compareTo(java.math.BigInteger.ZERO) > 0) {
+                souls = scaleByMultiplier(souls, swordPerkService.soulsMultiplier(player));
+            }
+            if (essence.compareTo(java.math.BigInteger.ZERO) > 0) {
+                essence = scaleByMultiplier(essence, swordPerkService.essenceMultiplier(player));
+            }
+        }
+
+        profile.add(CurrencyType.MONEY, money);
+        profile.add(CurrencyType.SOULS, souls);
+        profile.add(CurrencyType.ESSENCE, essence);
         profile.add(CurrencyType.SHARDS, rewards.shards());
+    }
+
+    private java.math.BigInteger scaleByMultiplier(java.math.BigInteger base, double multiplier) {
+        if (multiplier <= 0.0D || base.compareTo(java.math.BigInteger.ZERO) <= 0) {
+            return java.math.BigInteger.ZERO;
+        }
+        java.math.BigDecimal decimal = new java.math.BigDecimal(base);
+        java.math.BigDecimal scaled = decimal.multiply(java.math.BigDecimal.valueOf(multiplier));
+        return scaled.setScale(0, java.math.RoundingMode.DOWN).toBigInteger().max(java.math.BigInteger.ZERO);
     }
 
     private void hideFromOtherPlayers(Player owner, LivingEntity entity) {

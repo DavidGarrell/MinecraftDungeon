@@ -14,6 +14,7 @@ import de.fleaqx.minecraftDungeons.runtime.DamageIndicatorService;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.runtime.VirtualHealthService;
 import de.fleaqx.minecraftDungeons.sword.SwordService;
+import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import de.fleaqx.minecraftDungeons.sword.ui.SwordMenuService;
 import de.fleaqx.minecraftDungeons.ui.ZoneMenuService;
 import org.bukkit.command.PluginCommand;
@@ -32,6 +33,7 @@ public final class MinecraftDungeons extends JavaPlugin {
     private SwordService swordService;
     private SwordMenuService swordMenuService;
     private EnchantService enchantService;
+    private SwordPerkService swordPerkService;
 
     @Override
     public void onEnable() {
@@ -53,10 +55,14 @@ public final class MinecraftDungeons extends JavaPlugin {
 
         this.enchantService = new EnchantService(this, enchantConfigService, profileService);
         this.enchantService.reload();
+
+        this.swordPerkService = new SwordPerkService(profileService);
+        this.enchantService.setSwordPerkService(swordPerkService);
         dungeonService.setEnchantService(enchantService);
+        dungeonService.setSwordPerkService(swordPerkService);
 
         this.swordService = new SwordService(this, profileService, enchantService);
-        this.swordMenuService = new SwordMenuService(swordService, enchantService);
+        this.swordMenuService = new SwordMenuService(swordService, enchantService, swordPerkService);
 
         this.autoAttackService = new AutoAttackService(
                 this,
