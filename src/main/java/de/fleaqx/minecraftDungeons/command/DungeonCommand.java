@@ -4,6 +4,8 @@ import de.fleaqx.minecraftDungeons.currency.NumberFormat;
 import de.fleaqx.minecraftDungeons.enchant.EnchantService;
 import de.fleaqx.minecraftDungeons.model.ZoneDefinition;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
+import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
+import de.fleaqx.minecraftDungeons.sword.SwordService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
@@ -11,6 +13,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -18,12 +21,18 @@ import java.util.List;
 
 public class DungeonCommand implements CommandExecutor, TabCompleter {
 
+    private final JavaPlugin plugin;
     private final DungeonService dungeonService;
     private final EnchantService enchantService;
+    private final SwordPerkService swordPerkService;
+    private final SwordService swordService;
 
-    public DungeonCommand(DungeonService dungeonService, EnchantService enchantService) {
+    public DungeonCommand(JavaPlugin plugin, DungeonService dungeonService, EnchantService enchantService, SwordPerkService swordPerkService, SwordService swordService) {
+        this.plugin = plugin;
         this.dungeonService = dungeonService;
         this.enchantService = enchantService;
+        this.swordPerkService = swordPerkService;
+        this.swordService = swordService;
     }
 
     @Override
@@ -32,13 +41,16 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/dungeon reload");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon start <zone> [stage]");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon enchant <reload|list|setlevel|addlevel|settoollevel|addtoolxp>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon perk <reload|list|set|addpoints>");
             return true;
         }
 
         if (args[0].equalsIgnoreCase("reload")) {
+            plugin.reloadConfig();
             dungeonService.reload();
             enchantService.reload();
-            sender.sendMessage(ChatColor.GREEN + "Dungeon and enchant configuration reloaded.");
+            swordPerkService.reload();
+            sender.sendMessage(ChatColor.GREEN + "Dungeon, enchant and perk configuration reloaded.");
             return true;
         }
 
@@ -88,6 +100,14 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
             }
 
             return handleEnchantAdmin(sender, args);
+        }
+
+        if (args[0].equalsIgnoreCase("perk")) {
+            if (!sender.hasPermission("minecraftdungeons.admin")) {
+                sender.sendMessage(ChatColor.RED + "No permission.");
+                return true;
+            }
+            return handlePerkAdmin(sender, args);
         }
 
         return true;
@@ -190,10 +210,84 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private boolean handlePerkAdmin(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon perk reload");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon perk list");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon perk set <player> <perkId> <level>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon perk addpoints <player> <amount>");
+            return true;
+        }
+
+        switch (args[1].toLowerCase()) {
+            case "reload" -> {
+                plugin.reloadConfig();
+                swordPerkService.reload();
+                sender.sendMessage(ChatColor.GREEN + "Perk config reloaded.");
+                return true;
+            }
+            case "list" -> {
+                List<String> ids = swordPerkService.availablePerks().stream().map(SwordPerkService.PerkDefinition::id).toList();
+                sender.sendMessage(ChatColor.AQUA + "Perks: " + String.join(", ", ids));
+                return true;
+            }
+            case "set" -> {
+                if (args.length < 5) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon perk set <player> <perkId> <level>");
+                    return true;
+                }
+                Player target = Bukkit.getPlayerExact(args[2]);
+                if (target == null) {
+                    sender.sendMessage(ChatColor.RED + "Player not found.");
+                    return true;
+                }
+                int level;
+                try {
+                    level = Integer.parseInt(args[4]);
+                } catch (Exception exception) {
+                    sender.sendMessage(ChatColor.RED + "Invalid level.");
+                    return true;
+                }
+                if (!swordPerkService.setPerk(target, args[3], level)) {
+                    sender.sendMessage(ChatColor.RED + "Unknown perk id.");
+                    return true;
+                }
+                swordService.ensureSwordInSlot(target);
+                sender.sendMessage(ChatColor.GREEN + "Perk updated for " + target.getName() + ".");
+                return true;
+            }
+            case "addpoints" -> {
+                if (args.length < 4) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon perk addpoints <player> <amount>");
+                    return true;
+                }
+                Player target = Bukkit.getPlayerExact(args[2]);
+                if (target == null) {
+                    sender.sendMessage(ChatColor.RED + "Player not found.");
+                    return true;
+                }
+                int amount;
+                try {
+                    amount = Integer.parseInt(args[3]);
+                } catch (Exception exception) {
+                    sender.sendMessage(ChatColor.RED + "Invalid amount.");
+                    return true;
+                }
+                swordPerkService.addPerkPoints(target, amount);
+                sender.sendMessage(ChatColor.GREEN + "Added perk points to " + target.getName() + ".");
+                return true;
+            }
+            default -> {
+                sender.sendMessage(ChatColor.RED + "Unknown perk subcommand.");
+                return true;
+            }
+        }
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return List.of("reload", "start", "enchant");
+            return List.of("reload", "start", "enchant", "perk");
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) {
@@ -208,14 +302,27 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
             return List.of("reload", "list", "setlevel", "addlevel", "settoollevel", "addtoolxp");
         }
 
+        if (args.length == 2 && args[0].equalsIgnoreCase("perk")) {
+            return List.of("reload", "list", "set", "addpoints");
+        }
+
         if (args.length == 3 && args[0].equalsIgnoreCase("enchant")
                 && (args[1].equalsIgnoreCase("setlevel") || args[1].equalsIgnoreCase("addlevel") || args[1].equalsIgnoreCase("settoollevel") || args[1].equalsIgnoreCase("addtoolxp"))) {
+            return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("perk")
+                && (args[1].equalsIgnoreCase("set") || args[1].equalsIgnoreCase("addpoints"))) {
             return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
         }
 
         if (args.length == 4 && args[0].equalsIgnoreCase("enchant")
                 && (args[1].equalsIgnoreCase("setlevel") || args[1].equalsIgnoreCase("addlevel"))) {
             return enchantService.enchantIds();
+        }
+
+        if (args.length == 4 && args[0].equalsIgnoreCase("perk") && args[1].equalsIgnoreCase("set")) {
+            return swordPerkService.availablePerks().stream().map(SwordPerkService.PerkDefinition::id).toList();
         }
 
         return List.of();

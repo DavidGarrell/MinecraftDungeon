@@ -8,3 +8,65 @@ sword:
     level-damage-growth: 2.916
     base-price: 200.0
     level-price-growth: 3.4
+  perks:
+    level-weights: [40, 28, 18, 10, 4]
+    pity-rolls: 200
+    pity-plus-rolls: 800
+    shop-offers:
+      - points: 5
+        cost: 50
+      - points: 15
+        cost: 140
+      - points: 35
+        cost: 300
+    definitions:
+      universal:
+        display-name: Universal
+        rarity: Masterful
+        weight: 28
+        attack-speed: [0.00, 0.00, 0.15, 0.20, 0.25]
+        enchant-proc: [0.08, 0.16, 0.24, 0.32, 0.40]
+        souls: [0.30, 0.60, 0.90, 1.20, 1.50]
+        sword-xp: [0.12, 0.24, 0.36, 0.48, 0.60]
+        money: [0.10, 0.20, 0.30, 0.40, 0.50]
+        essence: [0.30, 0.60, 0.90, 1.20, 1.50]
+      berserker:
+        display-name: Berserker
+        rarity: Legendary
+        weight: 22
+        attack-speed: [0.10, 0.20, 0.30, 0.40, 0.55]
+        enchant-proc: [0.05, 0.10, 0.15, 0.22, 0.30]
+        souls: [0.10, 0.20, 0.30, 0.45, 0.60]
+        sword-xp: [0.05, 0.10, 0.15, 0.22, 0.30]
+        money: [0.05, 0.10, 0.15, 0.20, 0.28]
+        essence: [0.05, 0.10, 0.15, 0.20, 0.28]
+      treasure_hunter:
+        display-name: Treasure Hunter
+        rarity: Epic
+        weight: 26
+        attack-speed: [0.00, 0.05, 0.08, 0.10, 0.12]
+        enchant-proc: [0.05, 0.10, 0.14, 0.18, 0.22]
+        souls: [0.20, 0.35, 0.50, 0.70, 0.90]
+        sword-xp: [0.20, 0.35, 0.50, 0.65, 0.80]
+        money: [0.35, 0.55, 0.80, 1.00, 1.30]
+        essence: [0.20, 0.35, 0.50, 0.70, 0.90]
+      soul_reaper:
+        display-name: Soul Reaper
+        rarity: Mythic
+        weight: 18
+        attack-speed: [0.00, 0.05, 0.10, 0.15, 0.22]
+        enchant-proc: [0.12, 0.20, 0.30, 0.40, 0.50]
+        souls: [0.45, 0.80, 1.20, 1.60, 2.00]
+        sword-xp: [0.10, 0.20, 0.30, 0.45, 0.60]
+        money: [0.08, 0.16, 0.24, 0.32, 0.45]
+        essence: [0.35, 0.65, 1.00, 1.30, 1.70]
+      essence_overlord:
+        display-name: Essence Overlord
+        rarity: Legendary
+        weight: 20
+        attack-speed: [0.00, 0.04, 0.08, 0.12, 0.16]
+        enchant-proc: [0.08, 0.14, 0.20, 0.28, 0.35]
+        souls: [0.10, 0.20, 0.30, 0.45, 0.60]
+        sword-xp: [0.18, 0.32, 0.46, 0.60, 0.78]
+        money: [0.10, 0.20, 0.35, 0.50, 0.70]
+        essence: [0.50, 0.90, 1.30, 1.80, 2.30]

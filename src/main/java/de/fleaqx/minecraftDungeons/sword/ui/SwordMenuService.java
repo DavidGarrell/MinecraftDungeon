@@ -174,10 +174,10 @@ public class SwordMenuService {
         )));
 
         inv.setItem(4, item(Material.ENCHANTED_BOOK, ChatColor.AQUA + "Perk Pity", List.of(
-                ChatColor.GRAY + "After 200 rolls, next roll is",
+                ChatColor.GRAY + "After " + swordPerkService.pityRolls() + " rolls, next roll is",
                 ChatColor.GOLD + "Legendary or higher",
                 " ",
-                ChatColor.GRAY + "After 800 rolls, next roll is",
+                ChatColor.GRAY + "After " + swordPerkService.pityPlusRolls() + " rolls, next roll is",
                 ChatColor.RED + "Masterful",
                 " ",
                 ChatColor.DARK_AQUA + "Rolls until Pity: " + ChatColor.WHITE + swordPerkService.rollsUntilPity(player),
@@ -209,18 +209,15 @@ public class SwordMenuService {
                 ChatColor.GRAY + "Chance: " + swordPerkService.chanceText(player)
         )));
 
-        inv.setItem(29, item(Material.GOLD_BLOCK, ChatColor.YELLOW + "Buy 5 Perk Points", List.of(
-                ChatColor.GRAY + "Price: " + ChatColor.GOLD + "50 Shards",
-                ChatColor.GREEN + "Click to purchase"
-        )));
-        inv.setItem(30, item(Material.GOLD_BLOCK, ChatColor.YELLOW + "Buy 15 Perk Points", List.of(
-                ChatColor.GRAY + "Price: " + ChatColor.GOLD + "140 Shards",
-                ChatColor.GREEN + "Click to purchase"
-        )));
-        inv.setItem(31, item(Material.GOLD_BLOCK, ChatColor.YELLOW + "Buy 35 Perk Points", List.of(
-                ChatColor.GRAY + "Price: " + ChatColor.GOLD + "300 Shards",
-                ChatColor.GREEN + "Click to purchase"
-        )));
+        int[] offerSlots = new int[]{29, 30, 31};
+        List<SwordPerkService.ShopOffer> offers = swordPerkService.shopOffers();
+        for (int i = 0; i < Math.min(offerSlots.length, offers.size()); i++) {
+            SwordPerkService.ShopOffer offer = offers.get(i);
+            inv.setItem(offerSlots[i], item(Material.GOLD_BLOCK, ChatColor.YELLOW + "Buy " + offer.points() + " Perk Points", List.of(
+                    ChatColor.GRAY + "Price: " + ChatColor.GOLD + offer.cost() + " Shards",
+                    ChatColor.GREEN + "Click to purchase"
+            )));
+        }
 
         inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to sword menu")));
         fill(inv);
@@ -230,19 +227,27 @@ public class SwordMenuService {
 
     public void openPerkCodex(Player player) {
         Inventory inv = Bukkit.createInventory(player, 54, "Perk Codex");
-        inv.setItem(10, item(Material.BLAZE_ROD, ChatColor.RED + "Universal", List.of(
-                ChatColor.GRAY + "Rarity: " + ChatColor.LIGHT_PURPLE + "Masterful",
-                " ",
-                ChatColor.GRAY + "Permanent boosts for Attack Speed,",
-                ChatColor.GRAY + "Enchant Proc, Souls, Sword XP,",
-                ChatColor.GRAY + "Money and Essence.",
-                " ",
-                ChatColor.RED + "Level 1" + ChatColor.GRAY + " - AS 0%, Proc 8%, Souls 30%, XP 12%, Money 10%, Essence 30%",
-                ChatColor.RED + "Level 2" + ChatColor.GRAY + " - AS 0%, Proc 16%, Souls 60%, XP 24%, Money 20%, Essence 60%",
-                ChatColor.RED + "Level 3" + ChatColor.GRAY + " - AS 15%, Proc 24%, Souls 90%, XP 36%, Money 30%, Essence 90%",
-                ChatColor.RED + "Level 4" + ChatColor.GRAY + " - AS 20%, Proc 32%, Souls 120%, XP 48%, Money 40%, Essence 120%",
-                ChatColor.RED + "Level 5" + ChatColor.GRAY + " - AS 25%, Proc 40%, Souls 150%, XP 60%, Money 50%, Essence 150%"
-        )));
+        int slot = 10;
+        for (SwordPerkService.PerkDefinition perk : swordPerkService.availablePerks()) {
+            if (slot >= 44) {
+                break;
+            }
+            List<String> lore = new ArrayList<>();
+            lore.add(ChatColor.GRAY + "Rarity: " + ChatColor.LIGHT_PURPLE + perk.rarity());
+            lore.add(ChatColor.GRAY + "Weight: " + ChatColor.YELLOW + perk.weight());
+            lore.add(" ");
+            for (int level = 1; level <= 5; level++) {
+                lore.add(ChatColor.RED + "Level " + level + ChatColor.GRAY
+                        + " - AS " + percent(perk.attackSpeed()[level - 1])
+                        + ", Proc " + percent(perk.enchantProc()[level - 1])
+                        + ", Souls " + percent(perk.souls()[level - 1])
+                        + ", XP " + percent(perk.swordXp()[level - 1])
+                        + ", Money " + percent(perk.money()[level - 1])
+                        + ", Essence " + percent(perk.essence()[level - 1]));
+            }
+            inv.setItem(slot, item(Material.BLAZE_ROD, ChatColor.RED + perk.displayName(), lore));
+            slot++;
+        }
 
         inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to perks")));
         fill(inv);
@@ -480,7 +485,8 @@ public class SwordMenuService {
                     if (!result.success()) {
                         player.sendMessage(ChatColor.RED + "You need perk points.");
                     } else {
-                        player.sendMessage(ChatColor.GREEN + "Rolled perk: " + ChatColor.AQUA + "Universal " + roman(result.level()) + ChatColor.GRAY + " (" + result.rarity() + ")");
+                        player.sendMessage(ChatColor.GREEN + "Rolled perk: " + ChatColor.AQUA + result.perkName() + " " + roman(result.level()) + ChatColor.GRAY + " (" + result.rarity() + ")");
+                        swordService.ensureSwordInSlot(player);
                         if (result.pityPlus()) {
                             player.sendMessage(ChatColor.LIGHT_PURPLE + "Pity+ triggered!");
                         } else if (result.pity()) {
@@ -491,10 +497,13 @@ public class SwordMenuService {
                     return true;
                 }
                 if (slot == 29 || slot == 30 || slot == 31) {
-                    int points = slot == 29 ? 5 : (slot == 30 ? 15 : 35);
-                    int cost = slot == 29 ? 50 : (slot == 30 ? 140 : 300);
-                    boolean ok = swordPerkService.buyPoints(player, points, cost);
-                    player.sendMessage(ok ? ChatColor.GREEN + "Bought " + points + " perk points." : ChatColor.RED + "Not enough shards.");
+                    int idx = slot == 29 ? 0 : (slot == 30 ? 1 : 2);
+                    List<SwordPerkService.ShopOffer> offers = swordPerkService.shopOffers();
+                    if (idx < offers.size()) {
+                        SwordPerkService.ShopOffer offer = offers.get(idx);
+                        boolean ok = swordPerkService.buyPoints(player, offer.points(), offer.cost());
+                        player.sendMessage(ok ? ChatColor.GREEN + "Bought " + offer.points() + " perk points." : ChatColor.RED + "Not enough shards.");
+                    }
                     openPerks(player);
                     return true;
                 }
