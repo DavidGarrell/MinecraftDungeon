@@ -1,11 +1,13 @@
 package de.fleaqx.minecraftDungeons.enchant;
 
+import de.fleaqx.minecraftDungeons.enchant.effect.*;
 import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.profile.ProfileService;
 import de.fleaqx.minecraftDungeons.runtime.DamageIndicatorService;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import org.bukkit.ChatColor;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -31,6 +33,7 @@ public class EnchantService {
     private final ProfileService profileService;
 
     private final Map<String, EnchantDefinition> definitions = new HashMap<>();
+    private final Map<String, EnchantEffect> effects = new HashMap<>();
     private BigInteger xpPerHit = BigInteger.ONE;
     private BigInteger xpBase = BigInteger.valueOf(100L);
     private double xpGrowth = 1.15D;
@@ -40,6 +43,7 @@ public class EnchantService {
         this.plugin = plugin;
         this.configService = configService;
         this.profileService = profileService;
+        bootstrapEffects();
     }
 
     public void reload() {
@@ -76,7 +80,7 @@ public class EnchantService {
 
     public BigInteger toolXpRequiredNext(Player player) {
         int level = toolLevel(player);
-        return scale(xpBase, Math.pow(xpGrowth, Math.max(0, level - 1))).max(BigInteger.ONE);
+        return scaleDamage(xpBase, Math.pow(xpGrowth, Math.max(0, level - 1))).max(BigInteger.ONE);
     }
 
     public boolean enchantEnabled(Player player, String id) {
@@ -233,7 +237,7 @@ public class EnchantService {
     }
 
     public BigInteger priceFor(EnchantDefinition def, int level) {
-        return scale(def.basePrice(), Math.pow(def.priceGrowth(), Math.max(0, level - 1))).max(BigInteger.ONE);
+        return scaleDamage(def.basePrice(), Math.pow(def.priceGrowth(), Math.max(0, level - 1))).max(BigInteger.ONE);
     }
 
     public double activationChance(Player player, EnchantDefinition def) {
@@ -270,9 +274,8 @@ public class EnchantService {
             }
 
             triggered.add(def);
-            if (def.damageMultiplier() > 0.0D) {
-                extraDamage = extraDamage.add(scale(swordDamage, def.damageMultiplier()));
-            }
+            EnchantEffect effect = effectFor(def.id());
+            extraDamage = extraDamage.add(effect.extraDamage(player, target, swordDamage, def, this));
         }
 
         return new EnchantHitResult(swordDamage.add(extraDamage), triggered);
@@ -289,32 +292,8 @@ public class EnchantService {
         }
 
         for (EnchantDefinition def : hit.triggered()) {
-            applyCurrencyBonus(player, def, dungeonService);
-
-            if (def.hitsAllZoneMobs()) {
-                BigInteger zoneDamage = scale(swordDamage, Math.max(0.1D, def.damageMultiplier() <= 0.0D ? 1.0D : def.damageMultiplier()));
-                dungeonService.damageOwnedMobs(player, zoneDamage, mainTarget.getUniqueId(), indicatorService);
-            }
-
-            if (def.executeEffect()) {
-                dungeonService.executeDamage(player, mainTarget, def.damageMultiplier(), indicatorService);
-            }
-
-            if (def.fireEffect()) {
-                applyDotTicks(player, mainTarget, swordDamage, dungeonService, indicatorService, def.fireTickMultiplier(), def.dotTicks(), def.fireTicks(), true);
-            }
-
-            if (def.freezeEffect()) {
-                applyDotTicks(player, mainTarget, swordDamage, dungeonService, indicatorService, def.freezeTickMultiplier(), def.dotTicks(), def.freezeTicks(), false);
-            }
-
-            if (def.phantomEffect()) {
-                applyPhantomStrike(player, swordDamage, def.phantomCount(), def.phantomHitMultiplier(), dungeonService, indicatorService);
-            }
-
-            if (def.lightningEffect()) {
-                applyLightningStrike(player, swordDamage, def.lightningHitMultiplier(), dungeonService, indicatorService);
-            }
+            EnchantEffect effect = effectFor(def.id());
+            effect.applyPostHit(player, mainTarget, swordDamage, def, this, dungeonService, indicatorService);
 
             if (enchantMessageEnabled(player, def.id())) {
                 player.sendMessage(ChatColor.GOLD + "Enchants " + ChatColor.DARK_GRAY + "> " + ChatColor.AQUA + def.displayName() + ChatColor.GRAY + " activated!");
@@ -326,7 +305,30 @@ public class EnchantService {
         return definitions.keySet().stream().sorted().toList();
     }
 
-    private void applyCurrencyBonus(Player player, EnchantDefinition def, DungeonService dungeonService) {
+    private EnchantEffect effectFor(String enchantId) {
+        return effects.getOrDefault(enchantId.toLowerCase(Locale.ROOT), new BaseEnchantEffect(enchantId.toLowerCase(Locale.ROOT)) {});
+    }
+
+    private void bootstrapEffects() {
+        registerEffect(new CriticalEnchantEffect());
+        registerEffect(new BlazedEnchantEffect());
+        registerEffect(new FrostbiteEnchantEffect());
+        registerEffect(new PhantomStrikeEnchantEffect());
+        registerEffect(new ThorEnchantEffect());
+        registerEffect(new DragonBurstEnchantEffect());
+        registerEffect(new ExecuteEnchantEffect());
+        registerEffect(new SoulGreedEnchantEffect());
+        registerEffect(new SoulMagnetEnchantEffect());
+        registerEffect(new EssenceFinderEnchantEffect());
+        registerEffect(new EssenceMagnetEnchantEffect());
+        registerEffect(new SpeedEnchantEffect());
+    }
+
+    private void registerEffect(EnchantEffect effect) {
+        effects.put(effect.enchantId().toLowerCase(Locale.ROOT), effect);
+    }
+
+    public void applyCurrencyBonus(Player player, EnchantDefinition def, DungeonService dungeonService) {
         if (def.bonusAmount().compareTo(BigInteger.ZERO) <= 0) {
             return;
         }
@@ -343,13 +345,13 @@ public class EnchantService {
             if (lvl <= 0 || !enchantEnabled(player, enhancer.id())) {
                 continue;
             }
-            bonus = scale(bonus, 1.0D + (enhancer.passiveMultiplier() * lvl));
+            bonus = scaleDamage(bonus, 1.0D + (enhancer.passiveMultiplier() * lvl));
         }
 
         dungeonService.addCurrency(player, def.bonusCurrency(), bonus);
     }
 
-    private void applyDotTicks(Player player,
+    public void applyDotTicks(Player player,
                                LivingEntity target,
                                BigInteger swordDamage,
                                DungeonService dungeonService,
@@ -368,7 +370,7 @@ public class EnchantService {
             target.setFreezeTicks(Math.max(target.getFreezeTicks(), statusTicks));
         }
 
-        BigInteger perTickDamage = scale(swordDamage, tickMultiplier);
+        BigInteger perTickDamage = scaleDamage(swordDamage, tickMultiplier);
         new BukkitRunnable() {
             private int tick;
 
@@ -394,7 +396,7 @@ public class EnchantService {
         }.runTaskTimer(plugin, 1L, 1L);
     }
 
-    private void applyPhantomStrike(Player player,
+    public void applyPhantomStrike(Player player,
                                     BigInteger swordDamage,
                                     int count,
                                     double hitMultiplier,
@@ -405,7 +407,7 @@ public class EnchantService {
             return;
         }
 
-        BigInteger dmg = scale(swordDamage, hitMultiplier);
+        BigInteger dmg = scaleDamage(swordDamage, hitMultiplier);
         int hits = Math.max(1, count);
         for (int i = 0; i < hits; i++) {
             LivingEntity target = mobs.get(ThreadLocalRandom.current().nextInt(mobs.size()));
@@ -429,19 +431,18 @@ public class EnchantService {
         }
     }
 
-    private void applyLightningStrike(Player player,
+    public void applyLightningStrike(Player player,
                                       BigInteger swordDamage,
                                       double hitMultiplier,
                                       DungeonService dungeonService,
                                       DamageIndicatorService indicatorService) {
-        BigInteger dmg = scale(swordDamage, hitMultiplier);
+        BigInteger dmg = scaleDamage(swordDamage, hitMultiplier);
         for (LivingEntity mob : dungeonService.activeOwnedMobs(player)) {
             if (!mob.isValid()) {
                 continue;
             }
-            if (mob.getWorld() != null) {
-                mob.getWorld().strikeLightningEffect(mob.getLocation());
-            }
+            player.spawnParticle(Particle.ELECTRIC_SPARK, mob.getLocation().add(0, 1.0, 0), 24, 0.25, 0.45, 0.25, 0.03);
+            player.playSound(mob.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.6F, 1.4F);
             DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, mob, dmg);
             if (result.accepted()) {
                 indicatorService.spawnDamage(player, mob, dmg);
@@ -460,10 +461,10 @@ public class EnchantService {
     }
 
     private BigInteger toolXpRequiredNextRaw(int level) {
-        return scale(xpBase, Math.pow(xpGrowth, Math.max(0, level - 1))).max(BigInteger.ONE);
+        return scaleDamage(xpBase, Math.pow(xpGrowth, Math.max(0, level - 1))).max(BigInteger.ONE);
     }
 
-    private BigInteger scale(BigInteger value, double multiplier) {
+    public BigInteger scaleDamage(BigInteger value, double multiplier) {
         if (multiplier <= 0.0D || value.compareTo(BigInteger.ZERO) <= 0) {
             return BigInteger.ZERO;
         }
