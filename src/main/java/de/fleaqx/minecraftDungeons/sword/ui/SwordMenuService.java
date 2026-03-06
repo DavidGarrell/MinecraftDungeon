@@ -6,6 +6,7 @@ import de.fleaqx.minecraftDungeons.enchant.EnchantDefinition;
 import de.fleaqx.minecraftDungeons.enchant.EnchantService;
 import de.fleaqx.minecraftDungeons.sword.SwordDefinition;
 import de.fleaqx.minecraftDungeons.sword.SwordService;
+import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -28,11 +29,13 @@ public class SwordMenuService {
 
     private final SwordService swordService;
     private final EnchantService enchantService;
+    private final SwordPerkService swordPerkService;
     private final Map<UUID, Context> contexts = new HashMap<>();
 
-    public SwordMenuService(SwordService swordService, EnchantService enchantService) {
+    public SwordMenuService(SwordService swordService, EnchantService enchantService, SwordPerkService swordPerkService) {
         this.swordService = swordService;
         this.enchantService = enchantService;
+        this.swordPerkService = swordPerkService;
     }
 
     public void openMain(Player player) {
@@ -62,6 +65,8 @@ public class SwordMenuService {
         inv.setItem(6, item(Material.DIAMOND,
                 (view == MainView.ESSENCE ? ChatColor.GREEN : ChatColor.AQUA) + "Essence Enchants" + (view == MainView.ESSENCE ? ChatColor.GREEN + " (SELECTED)" : ""),
                 List.of(ChatColor.GRAY + "Klicke um Essence Enchants anzuzeigen.")));
+        inv.setItem(8, item(Material.BOOK, ChatColor.AQUA + "Perks",
+                List.of(ChatColor.GRAY + "Perks act as permanent multipliers", ChatColor.GRAY + "for your sword.", ChatColor.AQUA + "Click to view perks")));
 
         inv.setItem(49, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close this menu.")));
         if (safePage > 0) {
@@ -157,6 +162,92 @@ public class SwordMenuService {
 
             inv.setItem(GRID_SLOTS[i], item(def.icon(), (maxed ? ChatColor.GREEN : ChatColor.AQUA) + def.displayName(), lore));
         }
+    }
+
+    public void openPerks(Player player) {
+        Inventory inv = Bukkit.createInventory(player, 54, "Sword Perks");
+
+        inv.setItem(0, item(Material.BLAZE_ROD, ChatColor.YELLOW + "Roll Perk", List.of(
+                ChatColor.GRAY + "Cost: " + ChatColor.RED + "1 Perk Point",
+                ChatColor.GRAY + "Available: " + ChatColor.AQUA + swordPerkService.perkPoints(player),
+                ChatColor.GREEN + "Click to roll"
+        )));
+
+        inv.setItem(4, item(Material.ENCHANTED_BOOK, ChatColor.AQUA + "Perk Pity", List.of(
+                ChatColor.GRAY + "After 200 rolls, next roll is",
+                ChatColor.GOLD + "Legendary or higher",
+                " ",
+                ChatColor.GRAY + "After 800 rolls, next roll is",
+                ChatColor.RED + "Masterful",
+                " ",
+                ChatColor.DARK_AQUA + "Rolls until Pity: " + ChatColor.WHITE + swordPerkService.rollsUntilPity(player),
+                ChatColor.DARK_AQUA + "Rolls until Pity+: " + ChatColor.WHITE + swordPerkService.rollsUntilPityPlus(player)
+        )));
+
+        inv.setItem(8, item(Material.DIAMOND, ChatColor.AQUA + "Perk Points", List.of(
+                ChatColor.GRAY + "Current points: " + ChatColor.GREEN + swordPerkService.perkPoints(player),
+                ChatColor.GRAY + "Current rolls: " + ChatColor.YELLOW + swordPerkService.perkRolls(player)
+        )));
+
+        inv.setItem(20, item(Material.BOOKSHELF, ChatColor.GREEN + "Perk Codex", List.of(
+                ChatColor.GRAY + "Click to see all possible perks"
+        )));
+
+        inv.setItem(22, item(Material.REDSTONE_BLOCK, ChatColor.RED + "Current Perk", List.of(
+                ChatColor.GRAY + "Perk: " + ChatColor.WHITE + swordPerkService.currentPerkName(player),
+                ChatColor.GRAY + "Level: " + ChatColor.WHITE + swordPerkService.currentPerkLevel(player),
+                ChatColor.GRAY + "Rarity: " + ChatColor.LIGHT_PURPLE + swordPerkService.currentPerkRarity(player),
+                " ",
+                ChatColor.RED + "Boosts:",
+                ChatColor.GRAY + "Attack Speed » " + percent(swordPerkService.attackSpeedMultiplier(player) - 1.0D),
+                ChatColor.GRAY + "Enchant Proc » " + percent(swordPerkService.enchantProcMultiplier(player) - 1.0D),
+                ChatColor.GRAY + "Souls » " + percent(swordPerkService.soulsMultiplier(player) - 1.0D),
+                ChatColor.GRAY + "Sword XP » " + percent(swordPerkService.swordXpMultiplier(player) - 1.0D),
+                ChatColor.GRAY + "Money » " + percent(swordPerkService.moneyMultiplier(player) - 1.0D),
+                ChatColor.GRAY + "Essence » " + percent(swordPerkService.essenceMultiplier(player) - 1.0D),
+                " ",
+                ChatColor.GRAY + "Chance: " + swordPerkService.chanceText(player)
+        )));
+
+        inv.setItem(29, item(Material.GOLD_BLOCK, ChatColor.YELLOW + "Buy 5 Perk Points", List.of(
+                ChatColor.GRAY + "Price: " + ChatColor.GOLD + "50 Shards",
+                ChatColor.GREEN + "Click to purchase"
+        )));
+        inv.setItem(30, item(Material.GOLD_BLOCK, ChatColor.YELLOW + "Buy 15 Perk Points", List.of(
+                ChatColor.GRAY + "Price: " + ChatColor.GOLD + "140 Shards",
+                ChatColor.GREEN + "Click to purchase"
+        )));
+        inv.setItem(31, item(Material.GOLD_BLOCK, ChatColor.YELLOW + "Buy 35 Perk Points", List.of(
+                ChatColor.GRAY + "Price: " + ChatColor.GOLD + "300 Shards",
+                ChatColor.GREEN + "Click to purchase"
+        )));
+
+        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to sword menu")));
+        fill(inv);
+        player.openInventory(inv);
+        contexts.put(player.getUniqueId(), new Context("perks", 0, 0, EnchantCategory.SOULS, null, MainView.SOULS));
+    }
+
+    public void openPerkCodex(Player player) {
+        Inventory inv = Bukkit.createInventory(player, 54, "Perk Codex");
+        inv.setItem(10, item(Material.BLAZE_ROD, ChatColor.RED + "Universal", List.of(
+                ChatColor.GRAY + "Rarity: " + ChatColor.LIGHT_PURPLE + "Masterful",
+                " ",
+                ChatColor.GRAY + "Permanent boosts for Attack Speed,",
+                ChatColor.GRAY + "Enchant Proc, Souls, Sword XP,",
+                ChatColor.GRAY + "Money and Essence.",
+                " ",
+                ChatColor.RED + "Level 1" + ChatColor.GRAY + " - AS 0%, Proc 8%, Souls 30%, XP 12%, Money 10%, Essence 30%",
+                ChatColor.RED + "Level 2" + ChatColor.GRAY + " - AS 0%, Proc 16%, Souls 60%, XP 24%, Money 20%, Essence 60%",
+                ChatColor.RED + "Level 3" + ChatColor.GRAY + " - AS 15%, Proc 24%, Souls 90%, XP 36%, Money 30%, Essence 90%",
+                ChatColor.RED + "Level 4" + ChatColor.GRAY + " - AS 20%, Proc 32%, Souls 120%, XP 48%, Money 40%, Essence 120%",
+                ChatColor.RED + "Level 5" + ChatColor.GRAY + " - AS 25%, Proc 40%, Souls 150%, XP 60%, Money 50%, Essence 150%"
+        )));
+
+        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to perks")));
+        fill(inv);
+        player.openInventory(inv);
+        contexts.put(player.getUniqueId(), new Context("perk_codex", 0, 0, EnchantCategory.SOULS, null, MainView.SOULS));
     }
 
     public void openUpgrade(Player player, int swordId, int returnPage) {
@@ -290,6 +381,10 @@ public class SwordMenuService {
                     player.closeInventory();
                     return true;
                 }
+                if (slot == 8) {
+                    openPerks(player);
+                    return true;
+                }
 
                 if (ctx.view() == MainView.SKINS && slot == 51) {
                     SwordService.BuyBestResult result = swordService.buyBest(player);
@@ -371,6 +466,45 @@ public class SwordMenuService {
                 }
                 openEnchantDetail(player, ctx.category(), ctx.page(), def);
             }
+            case "perks" -> {
+                if (slot == 49) {
+                    openMain(player, MainView.SOULS, 0);
+                    return true;
+                }
+                if (slot == 20) {
+                    openPerkCodex(player);
+                    return true;
+                }
+                if (slot == 0) {
+                    SwordPerkService.RollResult result = swordPerkService.roll(player);
+                    if (!result.success()) {
+                        player.sendMessage(ChatColor.RED + "You need perk points.");
+                    } else {
+                        player.sendMessage(ChatColor.GREEN + "Rolled perk: " + ChatColor.AQUA + "Universal " + roman(result.level()) + ChatColor.GRAY + " (" + result.rarity() + ")");
+                        if (result.pityPlus()) {
+                            player.sendMessage(ChatColor.LIGHT_PURPLE + "Pity+ triggered!");
+                        } else if (result.pity()) {
+                            player.sendMessage(ChatColor.GOLD + "Pity triggered!");
+                        }
+                    }
+                    openPerks(player);
+                    return true;
+                }
+                if (slot == 29 || slot == 30 || slot == 31) {
+                    int points = slot == 29 ? 5 : (slot == 30 ? 15 : 35);
+                    int cost = slot == 29 ? 50 : (slot == 30 ? 140 : 300);
+                    boolean ok = swordPerkService.buyPoints(player, points, cost);
+                    player.sendMessage(ok ? ChatColor.GREEN + "Bought " + points + " perk points." : ChatColor.RED + "Not enough shards.");
+                    openPerks(player);
+                    return true;
+                }
+            }
+            case "perk_codex" -> {
+                if (slot == 49) {
+                    openPerks(player);
+                    return true;
+                }
+            }
         }
 
         return true;
@@ -445,6 +579,10 @@ public class SwordMenuService {
         }
         long oneIn = Math.max(1L, Math.round(1.0D / safe));
         return String.format("%.3f%% (1 in %d)", safe * 100.0D, oneIn);
+    }
+
+    private String percent(double value) {
+        return String.format("%.0f%%", Math.max(0.0D, value) * 100.0D);
     }
 
     private String capitalize(String value) {

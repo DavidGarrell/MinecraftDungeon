@@ -53,6 +53,10 @@ public class ProfileService {
             config.set(base + ".sword.selected", profile.selectedSword());
             config.set(base + ".tool.level", profile.toolLevel());
             config.set(base + ".tool.xp", profile.toolXp().toString());
+            config.set(base + ".perks.points", profile.perkPoints());
+            config.set(base + ".perks.rolls", profile.perkRolls());
+            config.set(base + ".perks.current.id", profile.currentPerkId());
+            config.set(base + ".perks.current.level", profile.currentPerkLevel());
 
             for (CurrencyType type : CurrencyType.values()) {
                 config.set(base + ".currency." + type.key(), profile.balance(type).toString());
@@ -112,6 +116,10 @@ public class ProfileService {
             profile.selectedSword(config.getInt(base + ".sword.selected", 1));
             profile.toolLevel(config.getInt(base + ".tool.level", 1));
             profile.toolXp(NumberFormat.parse(config.getString(base + ".tool.xp", "0"), BigInteger.ZERO));
+            profile.perkPoints(config.getInt(base + ".perks.points", 0));
+            profile.perkRolls(config.getInt(base + ".perks.rolls", 0));
+            profile.currentPerkId(config.getString(base + ".perks.current.id", "none"));
+            profile.currentPerkLevel(config.getInt(base + ".perks.current.level", 0));
 
             for (CurrencyType type : CurrencyType.values()) {
                 BigInteger amount = NumberFormat.parse(config.getString(base + ".currency." + type.key(), "0"), BigInteger.ZERO);
