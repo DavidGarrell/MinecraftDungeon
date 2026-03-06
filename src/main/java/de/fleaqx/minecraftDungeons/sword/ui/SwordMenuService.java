@@ -1,0 +1,396 @@
+package de.fleaqx.minecraftDungeons.sword.ui;
+
+import de.fleaqx.minecraftDungeons.currency.NumberFormat;
+import de.fleaqx.minecraftDungeons.enchant.EnchantCategory;
+import de.fleaqx.minecraftDungeons.enchant.EnchantDefinition;
+import de.fleaqx.minecraftDungeons.enchant.EnchantService;
+import de.fleaqx.minecraftDungeons.sword.SwordDefinition;
+import de.fleaqx.minecraftDungeons.sword.SwordService;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.Material;
+import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+public class SwordMenuService {
+
+    private static final int[] GRID_SLOTS = new int[]{10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+
+    private final SwordService swordService;
+    private final EnchantService enchantService;
+    private final Map<UUID, Context> contexts = new HashMap<>();
+
+    public SwordMenuService(SwordService swordService, EnchantService enchantService) {
+        this.swordService = swordService;
+        this.enchantService = enchantService;
+    }
+
+    public void openMain(Player player) {
+        Inventory inv = Bukkit.createInventory(player, 54, "Sword Enchants");
+        inv.setItem(20, item(Material.NETHER_STAR, ChatColor.LIGHT_PURPLE + "Sword Skins", List.of(ChatColor.GRAY + "Open sword skin upgrades.")));
+        inv.setItem(22, item(Material.BLAZE_POWDER, ChatColor.GOLD + "Souls Enchants", List.of(ChatColor.GRAY + "Open souls enchantments.")));
+        inv.setItem(24, item(Material.DIAMOND, ChatColor.AQUA + "Essence Enchants", List.of(ChatColor.GRAY + "Open essence enchantments.")));
+
+        inv.setItem(4, item(Material.ANVIL, ChatColor.YELLOW + "Tool Level",
+                List.of(
+                        ChatColor.GRAY + "Level: " + ChatColor.GREEN + enchantService.toolLevel(player),
+                        ChatColor.GRAY + "XP: " + ChatColor.AQUA + NumberFormat.compact(enchantService.toolXp(player)) + ChatColor.DARK_GRAY + " / " + ChatColor.AQUA + NumberFormat.compact(enchantService.toolXpRequiredNext(player))
+                )));
+
+        fill(inv);
+        player.openInventory(inv);
+        contexts.put(player.getUniqueId(), new Context("main", 0, 0, EnchantCategory.SOULS, null));
+    }
+
+    public void openSkins(Player player, int page) {
+        Inventory inv = Bukkit.createInventory(player, 54, "Sword Skins");
+        int start = page * GRID_SLOTS.length;
+
+        for (int i = 0; i < GRID_SLOTS.length; i++) {
+            int index = start + i;
+            if (index >= SwordService.MAX_SWORDS) {
+                break;
+            }
+
+            SwordDefinition def = swordService.definition(index + 1);
+            int tier = swordService.swordTier(player, def.id());
+            ItemStack item = new ItemStack(def.material());
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName((tier > 0 ? ChatColor.GREEN : ChatColor.RED) + def.name());
+                List<String> lore = new ArrayList<>();
+                lore.add(ChatColor.GRAY + "ID: " + ChatColor.WHITE + def.id());
+                lore.add(ChatColor.GRAY + "Current Tier: " + ChatColor.WHITE + tier + "/5");
+                lore.add(ChatColor.YELLOW + "Click to open upgrade view");
+                meta.setLore(lore);
+                item.setItemMeta(meta);
+            }
+            inv.setItem(GRID_SLOTS[i], item);
+        }
+
+        inv.setItem(4, item(Material.NETHER_STAR, ChatColor.GOLD + "Best Sword", List.of(ChatColor.GRAY + "Buys best affordable sword upgrades.", ChatColor.YELLOW + "Click to buy.")));
+        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to Sword Enchants")));
+        fill(inv);
+        player.openInventory(inv);
+        contexts.put(player.getUniqueId(), new Context("skins", page, 0, EnchantCategory.SOULS, null));
+    }
+
+    public void openUpgrade(Player player, int swordId) {
+        Inventory inv = Bukkit.createInventory(player, 54, "Upgrade Sword Skin");
+        SwordDefinition def = swordService.definition(swordId);
+        int currentTier = swordService.swordTier(player, swordId);
+
+        for (int tier = 1; tier <= SwordService.MAX_TIERS; tier++) {
+            ItemStack item = new ItemStack(def.material());
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null) {
+                meta.setDisplayName((tier <= currentTier ? ChatColor.GREEN : ChatColor.RED) + def.name() + " " + roman(tier));
+                List<String> lore = new ArrayList<>();
+                lore.add(ChatColor.GRAY + "Damage: " + ChatColor.RED + NumberFormat.compact(swordService.tierDamage(swordId, tier)));
+                lore.add(ChatColor.GRAY + "Price: " + ChatColor.GREEN + NumberFormat.compact(swordService.tierPrice(swordId, tier)) + " Money");
+                lore.add(ChatColor.GRAY + "Tier: " + ChatColor.WHITE + tier + "/5");
+                lore.add(tier <= currentTier ? ChatColor.GREEN + "UNLOCKED" : ChatColor.YELLOW + "Click to unlock/select");
+                meta.setLore(lore);
+                item.setItemMeta(meta);
+            }
+            inv.setItem(20 + tier, item);
+        }
+
+        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to skins")));
+        fill(inv);
+        player.openInventory(inv);
+        contexts.put(player.getUniqueId(), new Context("upgrade", 0, swordId, EnchantCategory.SOULS, null));
+    }
+
+    public void openEnchants(Player player, EnchantCategory category, int page) {
+        String title = category == EnchantCategory.ESSENCE ? "Essence Enchants" : "Souls Enchants";
+        Inventory inv = Bukkit.createInventory(player, 54, title);
+        List<EnchantDefinition> defs = enchantService.byCategory(category);
+        int start = page * GRID_SLOTS.length;
+
+        for (int i = 0; i < GRID_SLOTS.length; i++) {
+            int index = start + i;
+            if (index >= defs.size()) {
+                break;
+            }
+
+            EnchantDefinition def = defs.get(index);
+            int level = enchantService.enchantLevel(player, def.id());
+            boolean maxed = level >= def.maxLevel();
+
+            List<String> lore = new ArrayList<>();
+            for (String line : def.description()) {
+                lore.add(ChatColor.GRAY + line);
+            }
+            lore.add(" ");
+            lore.add(ChatColor.GRAY + "Type: " + ChatColor.WHITE + def.category().name());
+            if (def.damageMultiplier() > 0.0D) {
+                lore.add(ChatColor.GRAY + "Damage: " + ChatColor.RED + String.format("%.1fx", def.damageMultiplier()));
+            }
+            lore.add(ChatColor.GRAY + "Level: " + ChatColor.RED + level + ChatColor.DARK_GRAY + " / " + ChatColor.RED + def.maxLevel());
+            lore.add(ChatColor.GRAY + "Base Activation Chance: " + ChatColor.RED + chanceWithOdds(def.baseChance()));
+            lore.add(ChatColor.GRAY + "Your Activation Chance: " + ChatColor.RED + chanceWithOdds(enchantService.activationChance(player, def)));
+            lore.add(maxed ? ChatColor.GREEN + "ENCHANT MAXED" : ChatColor.YELLOW + "Click to open enchant menu");
+
+            inv.setItem(GRID_SLOTS[i], item(def.icon(), (maxed ? ChatColor.GREEN : ChatColor.AQUA) + def.displayName(), lore));
+        }
+
+        inv.setItem(4, item(Material.ANVIL, ChatColor.YELLOW + "Tool Level",
+                List.of(
+                        ChatColor.GRAY + "Level: " + ChatColor.GREEN + enchantService.toolLevel(player),
+                        ChatColor.GRAY + "XP: " + ChatColor.AQUA + NumberFormat.compact(enchantService.toolXp(player)) + ChatColor.DARK_GRAY + " / " + ChatColor.AQUA + NumberFormat.compact(enchantService.toolXpRequiredNext(player))
+                )));
+        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to Sword Enchants")));
+
+        fill(inv);
+        player.openInventory(inv);
+        contexts.put(player.getUniqueId(), new Context("enchants", page, 0, category, null));
+    }
+
+    public void openEnchantDetail(Player player, EnchantCategory category, int page, EnchantDefinition def) {
+        Inventory inv = Bukkit.createInventory(player, 54, def.displayName());
+        int level = enchantService.enchantLevel(player, def.id());
+        double baseChance = def.baseChance();
+        double yourChance = enchantService.activationChance(player, def);
+
+        inv.setItem(10, item(def.icon(), ChatColor.AQUA + def.displayName(), List.of(
+                ChatColor.GRAY + "Level: " + ChatColor.GREEN + level + ChatColor.DARK_GRAY + " / " + ChatColor.GREEN + def.maxLevel(),
+                ChatColor.GRAY + "Base Activation Chance: " + ChatColor.RED + chanceWithOdds(baseChance),
+                ChatColor.GRAY + "Your Activation Chance: " + ChatColor.RED + chanceWithOdds(yourChance)
+        )));
+
+        inv.setItem(12, item(Material.EMERALD, ChatColor.GREEN + "+1 Enchant Levels", List.of(
+                ChatColor.GRAY + "Level: " + ChatColor.WHITE + "1",
+                ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 1)) + " " + def.costCurrency().name(),
+                ChatColor.GREEN + "CLICK HERE"
+        )));
+        inv.setItem(13, item(Material.EXPERIENCE_BOTTLE, ChatColor.GREEN + "+10 Enchant Levels", List.of(
+                ChatColor.GRAY + "Level: " + ChatColor.WHITE + "10",
+                ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 10)) + " " + def.costCurrency().name(),
+                ChatColor.GREEN + "CLICK HERE"
+        )));
+        inv.setItem(14, item(Material.END_CRYSTAL, ChatColor.GREEN + "+100 Enchant Levels", List.of(
+                ChatColor.GRAY + "Level: " + ChatColor.WHITE + "100",
+                ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 100)) + " " + def.costCurrency().name(),
+                ChatColor.GREEN + "CLICK HERE"
+        )));
+        inv.setItem(15, item(Material.NETHER_STAR, ChatColor.GREEN + "+1000 Enchant Levels", List.of(
+                ChatColor.GRAY + "Level: " + ChatColor.WHITE + "1000",
+                ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 1000)) + " " + def.costCurrency().name(),
+                ChatColor.GREEN + "CLICK HERE"
+        )));
+        inv.setItem(16, item(Material.HOPPER, ChatColor.GREEN + "Max Upgrade", List.of(
+                ChatColor.GRAY + "Level: " + ChatColor.WHITE + enchantService.maxAffordableLevels(player, def.id()),
+                ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), enchantService.maxAffordableLevels(player, def.id()))) + " " + def.costCurrency().name(),
+                ChatColor.GREEN + "CLICK HERE"
+        )));
+
+        boolean enabled = enchantService.enchantEnabled(player, def.id());
+        boolean messages = enchantService.enchantMessageEnabled(player, def.id());
+        inv.setItem(30, item(Material.LEVER, ChatColor.GREEN + "Enchant Toggle", List.of(
+                ChatColor.GRAY + "Whether this enchant should be enabled while grinding",
+                enabled ? ChatColor.GREEN + "ENABLED" : ChatColor.RED + "DISABLED",
+                ChatColor.GRAY + "Click to toggle"
+        )));
+        inv.setItem(32, item(Material.OAK_SIGN, ChatColor.GREEN + "Message Toggle", List.of(
+                ChatColor.GRAY + "Whether this enchant should send an activation message",
+                messages ? ChatColor.GREEN + "ENABLED" : ChatColor.RED + "DISABLED",
+                ChatColor.GRAY + "Click to toggle"
+        )));
+
+        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to enchant list")));
+        fill(inv);
+        player.openInventory(inv);
+        contexts.put(player.getUniqueId(), new Context("enchant_detail", page, 0, category, def.id()));
+    }
+
+    public boolean handleClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return false;
+        }
+
+        Context ctx = contexts.get(player.getUniqueId());
+        if (ctx == null) {
+            return false;
+        }
+
+        event.setCancelled(true);
+        if (event.getClickedInventory() == null || !event.getClickedInventory().equals(event.getView().getTopInventory())) {
+            return true;
+        }
+
+        int slot = event.getSlot();
+        switch (ctx.menu()) {
+            case "main" -> {
+                if (slot == 20) {
+                    openSkins(player, 0);
+                } else if (slot == 22) {
+                    openEnchants(player, EnchantCategory.SOULS, 0);
+                } else if (slot == 24) {
+                    openEnchants(player, EnchantCategory.ESSENCE, 0);
+                }
+            }
+            case "skins" -> {
+                if (slot == 49) {
+                    openMain(player);
+                    return true;
+                }
+                if (slot == 4) {
+                    int upgrades = swordService.buyBest(player);
+                    player.sendMessage(upgrades > 0 ? ChatColor.GREEN + "Bought best sword upgrades: " + upgrades : ChatColor.RED + "No affordable sword upgrade.");
+                    swordService.ensureSwordInSlot(player);
+                    openSkins(player, ctx.page());
+                    return true;
+                }
+                int swordId = swordIdFromSlot(ctx.page(), slot);
+                if (swordId > 0) {
+                    openUpgrade(player, swordId);
+                }
+            }
+            case "upgrade" -> {
+                if (slot == 49) {
+                    openSkins(player, 0);
+                    return true;
+                }
+                int tier = slot - 20;
+                if (tier >= 1 && tier <= SwordService.MAX_TIERS) {
+                    boolean ok = swordService.unlockOrSelect(player, ctx.swordId(), tier);
+                    player.sendMessage(ok ? ChatColor.GREEN + "Sword updated." : ChatColor.RED + "Cannot unlock this tier.");
+                    openUpgrade(player, ctx.swordId());
+                }
+            }
+            case "enchants" -> {
+                if (slot == 49) {
+                    openMain(player);
+                    return true;
+                }
+                int index = enchantIndexFromSlot(ctx.page(), slot);
+                List<EnchantDefinition> defs = enchantService.byCategory(ctx.category());
+                if (index >= 0 && index < defs.size()) {
+                    openEnchantDetail(player, ctx.category(), ctx.page(), defs.get(index));
+                }
+            }
+            case "enchant_detail" -> {
+                EnchantDefinition def = enchantService.definition(ctx.enchantId()).orElse(null);
+                if (def == null) {
+                    openEnchants(player, ctx.category(), ctx.page());
+                    return true;
+                }
+                if (slot == 49) {
+                    openEnchants(player, ctx.category(), ctx.page());
+                    return true;
+                }
+
+                int bought = 0;
+                if (slot == 12) {
+                    bought = enchantService.upgradeLevels(player, def.id(), 1);
+                } else if (slot == 13) {
+                    bought = enchantService.upgradeLevels(player, def.id(), 10);
+                } else if (slot == 14) {
+                    bought = enchantService.upgradeLevels(player, def.id(), 100);
+                } else if (slot == 15) {
+                    bought = enchantService.upgradeLevels(player, def.id(), 1000);
+                } else if (slot == 16) {
+                    bought = enchantService.maxUpgrade(player, def.id());
+                } else if (slot == 30) {
+                    boolean enabled = enchantService.toggleEnabled(player, def.id());
+                    player.sendMessage(enabled ? ChatColor.GREEN + "Enchant enabled." : ChatColor.RED + "Enchant disabled.");
+                } else if (slot == 32) {
+                    boolean enabled = enchantService.toggleMessages(player, def.id());
+                    player.sendMessage(enabled ? ChatColor.GREEN + "Enchant messages enabled." : ChatColor.RED + "Enchant messages disabled.");
+                }
+
+                if (bought > 0) {
+                    player.sendMessage(ChatColor.GREEN + "Upgraded " + def.displayName() + " by " + bought + " levels.");
+                } else if (slot >= 12 && slot <= 16) {
+                    player.sendMessage(ChatColor.RED + "Upgrade failed (locked/max/no currency).");
+                }
+                openEnchantDetail(player, ctx.category(), ctx.page(), def);
+            }
+        }
+
+        return true;
+    }
+
+    public void handleClose(InventoryCloseEvent event) {
+        contexts.remove(event.getPlayer().getUniqueId());
+    }
+
+    private int swordIdFromSlot(int page, int slot) {
+        int indexInPage = gridIndex(slot);
+        if (indexInPage < 0) {
+            return -1;
+        }
+        int id = page * GRID_SLOTS.length + indexInPage + 1;
+        return id <= SwordService.MAX_SWORDS ? id : -1;
+    }
+
+    private int enchantIndexFromSlot(int page, int slot) {
+        int indexInPage = gridIndex(slot);
+        if (indexInPage < 0) {
+            return -1;
+        }
+        return page * GRID_SLOTS.length + indexInPage;
+    }
+
+    private int gridIndex(int slot) {
+        for (int i = 0; i < GRID_SLOTS.length; i++) {
+            if (GRID_SLOTS[i] == slot) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void fill(Inventory inv) {
+        ItemStack glass = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < inv.getSize(); i++) {
+            if (inv.getItem(i) == null) {
+                inv.setItem(i, glass);
+            }
+        }
+    }
+
+    private ItemStack item(Material material, String name, List<String> lore) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private String roman(int value) {
+        return switch (value) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            default -> "V";
+        };
+    }
+
+    private String chanceWithOdds(double chance) {
+        double safe = Math.max(0.0D, Math.min(1.0D, chance));
+        if (safe <= 0.0D) {
+            return "0.000% (0 in 0)";
+        }
+        long oneIn = Math.max(1L, Math.round(1.0D / safe));
+        return String.format("%.3f%% (1 in %d)", safe * 100.0D, oneIn);
+    }
+
+    private record Context(String menu, int page, int swordId, EnchantCategory category, String enchantId) {
+    }
+}

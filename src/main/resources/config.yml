@@ -1,0 +1,10 @@
+combat:
+  base-hits-per-second: 3.0
+  reset-interval-seconds: 300
+
+sword:
+  formula:
+    base-damage: 1.0
+    level-damage-growth: 2.916
+    base-price: 200.0
+    level-price-growth: 3.4
