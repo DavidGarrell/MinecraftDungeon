@@ -37,9 +37,9 @@ public class SwordMenuService {
 
     public void openMain(Player player) {
         Inventory inv = Bukkit.createInventory(player, 54, "Sword Enchants");
-        inv.setItem(20, item(Material.NETHER_STAR, ChatColor.LIGHT_PURPLE + "Sword Skins", List.of(ChatColor.GRAY + "Open sword skin upgrades.")));
-        inv.setItem(22, item(Material.BLAZE_POWDER, ChatColor.GOLD + "Souls Enchants", List.of(ChatColor.GRAY + "Open souls enchantments.")));
-        inv.setItem(24, item(Material.DIAMOND, ChatColor.AQUA + "Essence Enchants", List.of(ChatColor.GRAY + "Open essence enchantments.")));
+        inv.setItem(20, item(Material.NETHER_STAR, ChatColor.LIGHT_PURPLE + "Skins", List.of(ChatColor.GRAY + "Sword upgrades and skin progression.", ChatColor.YELLOW + "Click to open sword upgrades.")));
+        inv.setItem(22, item(Material.BLAZE_POWDER, ChatColor.GOLD + "Souls Enchants", List.of(ChatColor.GRAY + "Open souls enchantments directly.")));
+        inv.setItem(24, item(Material.DIAMOND, ChatColor.AQUA + "Essence Enchants", List.of(ChatColor.GRAY + "Open essence enchantments directly.")));
 
         inv.setItem(4, item(Material.ANVIL, ChatColor.YELLOW + "Tool Level",
                 List.of(

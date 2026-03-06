@@ -30,7 +30,7 @@ public class CombatBossBarService {
         String name = capitalizeWords(state.mob().entityType().name());
         String hp = NumberFormat.compact(state.current());
 
-        bar.setTitle(color(state.mob().rarity()) + "[" + rarity + "] " + ChatColor.GRAY + name + " " + ChatColor.RED + "\u2764" + hp);
+        bar.setTitle(color(state.mob().rarity()) + "" + ChatColor.BOLD + "[" + ChatColor.RESET + color(state.mob().rarity()) + rarity + "] " + ChatColor.GRAY + name + " " + ChatColor.RED + "\u2764" + hp);
         bar.setColor(barColor(state.mob().rarity()));
         bar.setProgress(progress(state));
         bar.setVisible(true);
