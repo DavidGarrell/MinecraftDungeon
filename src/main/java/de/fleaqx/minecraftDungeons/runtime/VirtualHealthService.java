@@ -70,13 +70,13 @@ public class VirtualHealthService {
         if (health.mob().id().equalsIgnoreCase("afk_mob")) {
             entity.setCustomName(ChatColor.RED + "[AFK] " + ChatColor.GRAY + "[Level " + health.level() + "] "
                     + ChatColor.WHITE + capitalizeWords(health.mob().entityType().name()) + " "
-                    + ChatColor.RED + "\u2764" + hp);
+                    + ChatColor.RED + "\u2764∞");
             entity.setCustomNameVisible(true);
             return;
         }
 
         ChatColor rarityColor = rarityColor(health.mob().rarity());
-        String rarity = capitalize(health.mob().rarity().name());
+        String rarity = ChatColor.BOLD + capitalize(health.mob().rarity().name());
         String mobName = capitalizeWords(health.mob().entityType().name());
 
         String name = rarityColor + "[" + rarity + "] "

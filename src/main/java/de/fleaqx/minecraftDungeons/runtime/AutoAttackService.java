@@ -93,14 +93,16 @@ public class AutoAttackService {
             }
 
             Entity entity = Bukkit.getEntity(state.targetId());
-            if (!(entity instanceof LivingEntity target) || !target.isValid()) {
-                stop(state.playerId());
-                continue;
-            }
-
-            if (!dungeonService.canPlayerAttackMob(player, target.getUniqueId())) {
-                stop(state.playerId());
-                continue;
+            LivingEntity target = null;
+            if (entity instanceof LivingEntity living && living.isValid() && dungeonService.canPlayerAttackMob(player, living.getUniqueId())) {
+                target = living;
+            } else {
+                target = findNextTarget(player, state.targetId());
+                if (target == null) {
+                    stop(state.playerId());
+                    continue;
+                }
+                state.targetId(target.getUniqueId());
             }
 
             if (!sameWorld(player, target) || player.getLocation().distanceSquared(target.getLocation()) > 25.0D) {
@@ -140,13 +142,34 @@ public class AutoAttackService {
         }
     }
 
+    private LivingEntity findNextTarget(Player player, UUID previousTargetId) {
+        for (LivingEntity mob : dungeonService.activeOwnedMobs(player)) {
+            if (mob == null || !mob.isValid()) {
+                continue;
+            }
+            if (previousTargetId != null && previousTargetId.equals(mob.getUniqueId())) {
+                continue;
+            }
+            if (dungeonService.canPlayerAttackMob(player, mob.getUniqueId()) && !dungeonService.isAfkMobFor(player, mob.getUniqueId())) {
+                return mob;
+            }
+        }
+
+        for (LivingEntity mob : dungeonService.activeOwnedMobs(player)) {
+            if (mob != null && mob.isValid() && dungeonService.canPlayerAttackMob(player, mob.getUniqueId())) {
+                return mob;
+            }
+        }
+        return null;
+    }
+
     private boolean sameWorld(Player player, LivingEntity entity) {
         return player.getWorld().getUID().equals(entity.getWorld().getUID());
     }
 
     private static final class AutoAttackState {
         private final UUID playerId;
-        private final UUID targetId;
+        private UUID targetId;
         private final BigInteger damage;
         private long nextAttackNano;
 
@@ -163,6 +186,10 @@ public class AutoAttackService {
 
         public UUID targetId() {
             return targetId;
+        }
+
+        public void targetId(UUID targetId) {
+            this.targetId = targetId;
         }
 
         public BigInteger damage() {

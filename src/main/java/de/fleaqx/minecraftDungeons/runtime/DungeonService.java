@@ -43,6 +43,7 @@ public class DungeonService {
     private final VirtualHealthService virtualHealthService;
     private final VisibilityService visibilityService;
     private final RarityVisualService rarityVisualService;
+    private final DamageIndicatorService damageIndicatorService;
     private EnchantService enchantService;
 
     private final Map<String, ZoneDefinition> zones = new HashMap<>();
@@ -62,11 +63,13 @@ public class DungeonService {
     public DungeonService(JavaPlugin plugin,
                          ZoneConfigService configService,
                          ProfileService profileService,
-                         VirtualHealthService virtualHealthService) {
+                         VirtualHealthService virtualHealthService,
+                         DamageIndicatorService damageIndicatorService) {
         this.plugin = plugin;
         this.configService = configService;
         this.profileService = profileService;
         this.virtualHealthService = virtualHealthService;
+        this.damageIndicatorService = damageIndicatorService;
         this.visibilityService = createVisibilityService(plugin);
         this.rarityVisualService = new RarityVisualService();
 
@@ -258,8 +261,8 @@ public class DungeonService {
         }
 
         giveRewards(player, result.mob().rewards());
-        String rewardText = ChatColor.GREEN + "+" + NumberFormat.compact(result.mob().rewards().money()) + " Money";
-        player.sendTitle("", rewardText, 0, 20, 10);
+        String rewardText = ChatColor.GREEN + "+" + NumberFormat.compact(result.mob().rewards().money()) + " $";
+        damageIndicatorService.spawnReward(player, entity, rewardText);
 
         PlayerDungeonSession session = sessions.get(player.getUniqueId());
         if (session == null) {
@@ -464,7 +467,6 @@ public class DungeonService {
         }
 
         spawnAfkMobForPlayer(player, session);
-        player.sendMessage(ChatColor.YELLOW + "Stage " + session.currentStage() + " spawned: " + session.activeMobs().size() + " mobs");
     }
 
     private MobEntry pickWeighted(List<MobEntry> mobs, ZoneDefinition zone, int stageIndex) {

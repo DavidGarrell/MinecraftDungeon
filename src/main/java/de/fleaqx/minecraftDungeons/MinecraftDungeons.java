@@ -28,6 +28,7 @@ public final class MinecraftDungeons extends JavaPlugin {
     private DungeonService dungeonService;
     private ZoneMenuService zoneMenuService;
     private AutoAttackService autoAttackService;
+    private DamageIndicatorService damageIndicatorService;
     private SwordService swordService;
     private SwordMenuService swordMenuService;
     private EnchantService enchantService;
@@ -46,7 +47,8 @@ public final class MinecraftDungeons extends JavaPlugin {
         this.profileService.init();
 
         this.virtualHealthService = new VirtualHealthService();
-        this.dungeonService = new DungeonService(this, zoneConfigService, profileService, virtualHealthService);
+        this.damageIndicatorService = new DamageIndicatorService(this);
+        this.dungeonService = new DungeonService(this, zoneConfigService, profileService, virtualHealthService, damageIndicatorService);
         this.zoneMenuService = new ZoneMenuService(dungeonService);
 
         this.enchantService = new EnchantService(this, enchantConfigService, profileService);
@@ -59,7 +61,7 @@ public final class MinecraftDungeons extends JavaPlugin {
         this.autoAttackService = new AutoAttackService(
                 this,
                 dungeonService,
-                new DamageIndicatorService(this),
+                damageIndicatorService,
                 new CombatBossBarService(),
                 enchantService
         );
