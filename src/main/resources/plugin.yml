@@ -1,0 +1,4 @@
+name: MinecraftDungeons
+version: '1.0-SNAPSHOT'
+main: de.fleaqx.minecraftDungeons.MinecraftDungeons
+api-version: '1.21'
