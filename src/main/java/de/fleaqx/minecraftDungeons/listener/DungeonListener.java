@@ -151,11 +151,24 @@ public class DungeonListener implements Listener {
     public void onDropSword(PlayerDropItemEvent event) {
         if (swordService.isManagedSword(event.getItemDrop().getItemStack())) {
             event.setCancelled(true);
-            int upgrades = swordService.buyBest(event.getPlayer());
-            event.getPlayer().sendMessage(upgrades > 0
-                    ? ChatColor.GREEN + "Bought best sword upgrades: " + upgrades
-                    : ChatColor.RED + "No affordable sword upgrade.");
+            SwordService.BuyBestResult result = swordService.buyBest(event.getPlayer());
+            if (result.upgrades() > 0) {
+                String swordName = swordService.definition(result.swordId()).name();
+                event.getPlayer().sendMessage(ChatColor.GREEN + "Bought best sword upgrades: " + result.upgrades() + " (" + swordName + " " + roman(result.tier()) + ")");
+            } else {
+                event.getPlayer().sendMessage(ChatColor.RED + "No affordable sword upgrade.");
+            }
         }
+    }
+
+    private String roman(int value) {
+        return switch (value) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            default -> "V";
+        };
     }
 
     private Player extractDamager(Entity entity) {

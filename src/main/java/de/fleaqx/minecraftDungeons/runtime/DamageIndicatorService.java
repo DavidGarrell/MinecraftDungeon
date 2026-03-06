@@ -23,6 +23,14 @@ public class DamageIndicatorService {
     }
 
     public void spawnDamage(Player viewer, Entity target, BigInteger damage) {
+        spawnText(viewer, target, ChatColor.RED + "\u2764" + NumberFormat.compact(damage));
+    }
+
+    public void spawnReward(Player viewer, Entity target, String text) {
+        spawnText(viewer, target, text);
+    }
+
+    private void spawnText(Player viewer, Entity target, String text) {
         Location base = target.getLocation().clone().add(0, 0.6, 0);
         Location spawn = base.add(randomOffset(0.6), ThreadLocalRandom.current().nextDouble(0.0, 0.45), randomOffset(0.6));
 
@@ -34,7 +42,7 @@ public class DamageIndicatorService {
             as.setInvulnerable(true);
             as.setCollidable(false);
             as.setCustomNameVisible(true);
-            as.setCustomName(ChatColor.RED + "\u2764" + NumberFormat.compact(damage));
+            as.setCustomName(text);
         });
 
         for (Player online : Bukkit.getOnlinePlayers()) {

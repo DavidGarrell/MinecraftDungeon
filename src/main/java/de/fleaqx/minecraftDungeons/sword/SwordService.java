@@ -110,8 +110,10 @@ public class SwordService {
         return true;
     }
 
-    public int buyBest(Player player) {
+    public BuyBestResult buyBest(Player player) {
         int upgrades = 0;
+        int lastSwordId = -1;
+        int lastTier = -1;
         PlayerProfile profile = profile(player);
 
         boolean changed;
@@ -129,6 +131,8 @@ public class SwordService {
                     profile.remove(CurrencyType.MONEY, price);
                     profile.swordLevel(swordId, target);
                     profile.selectedSword(swordId);
+                    lastSwordId = swordId;
+                    lastTier = target;
                     upgrades++;
                     changed = true;
                 }
@@ -136,7 +140,7 @@ public class SwordService {
         } while (changed);
 
         ensureSwordInSlot(player);
-        return upgrades;
+        return new BuyBestResult(upgrades, lastSwordId, lastTier);
     }
 
     public SwordDefinition definition(int id) {
@@ -236,6 +240,9 @@ public class SwordService {
 
     private PlayerProfile profile(Player player) {
         return profileService.profile(player.getUniqueId());
+    }
+
+    public record BuyBestResult(int upgrades, int swordId, int tier) {
     }
 
     private void bootstrapDefinitions() {

@@ -53,8 +53,10 @@ public class SwordMenuService {
     }
 
     public void openSkins(Player player, int page) {
+        int maxPage = Math.max(0, (int) Math.ceil((double) SwordService.MAX_SWORDS / GRID_SLOTS.length) - 1);
+        int safePage = Math.max(0, Math.min(page, maxPage));
         Inventory inv = Bukkit.createInventory(player, 54, "Sword Skins");
-        int start = page * GRID_SLOTS.length;
+        int start = safePage * GRID_SLOTS.length;
 
         for (int i = 0; i < GRID_SLOTS.length; i++) {
             int index = start + i;
@@ -79,10 +81,16 @@ public class SwordMenuService {
         }
 
         inv.setItem(4, item(Material.NETHER_STAR, ChatColor.GOLD + "Best Sword", List.of(ChatColor.GRAY + "Buys best affordable sword upgrades.", ChatColor.YELLOW + "Click to buy.")));
+        if (safePage > 0) {
+            inv.setItem(48, item(Material.ARROW, ChatColor.YELLOW + "Previous Page", List.of(ChatColor.GRAY + "Go to page " + safePage)));
+        }
+        if (safePage < maxPage) {
+            inv.setItem(50, item(Material.ARROW, ChatColor.YELLOW + "Next Page", List.of(ChatColor.GRAY + "Go to page " + (safePage + 2))));
+        }
         inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to Sword Enchants")));
         fill(inv);
         player.openInventory(inv);
-        contexts.put(player.getUniqueId(), new Context("skins", page, 0, EnchantCategory.SOULS, null));
+        contexts.put(player.getUniqueId(), new Context("skins", safePage, 0, EnchantCategory.SOULS, null));
     }
 
     public void openUpgrade(Player player, int swordId) {
@@ -106,7 +114,8 @@ public class SwordMenuService {
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
-            inv.setItem(20 + tier, item);
+            int[] slots = new int[]{20, 21, 22, 23, 24};
+            inv.setItem(slots[tier - 1], item);
         }
 
         inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to skins")));
@@ -250,10 +259,23 @@ public class SwordMenuService {
                     return true;
                 }
                 if (slot == 4) {
-                    int upgrades = swordService.buyBest(player);
-                    player.sendMessage(upgrades > 0 ? ChatColor.GREEN + "Bought best sword upgrades: " + upgrades : ChatColor.RED + "No affordable sword upgrade.");
+                    SwordService.BuyBestResult result = swordService.buyBest(player);
+                    if (result.upgrades() > 0) {
+                        String swordName = swordService.definition(result.swordId()).name();
+                        player.sendMessage(ChatColor.GREEN + "Bought best sword upgrades: " + result.upgrades() + " (" + swordName + " " + roman(result.tier()) + ")");
+                    } else {
+                        player.sendMessage(ChatColor.RED + "No affordable sword upgrade.");
+                    }
                     swordService.ensureSwordInSlot(player);
                     openSkins(player, ctx.page());
+                    return true;
+                }
+                if (slot == 48) {
+                    openSkins(player, ctx.page() - 1);
+                    return true;
+                }
+                if (slot == 50) {
+                    openSkins(player, ctx.page() + 1);
                     return true;
                 }
                 int swordId = swordIdFromSlot(ctx.page(), slot);
@@ -266,7 +288,7 @@ public class SwordMenuService {
                     openSkins(player, 0);
                     return true;
                 }
-                int tier = slot - 20;
+                int tier = tierFromUpgradeSlot(slot);
                 if (tier >= 1 && tier <= SwordService.MAX_TIERS) {
                     boolean ok = swordService.unlockOrSelect(player, ctx.swordId(), tier);
                     player.sendMessage(ok ? ChatColor.GREEN + "Sword updated." : ChatColor.RED + "Cannot unlock this tier.");
@@ -337,6 +359,17 @@ public class SwordMenuService {
         }
         int id = page * GRID_SLOTS.length + indexInPage + 1;
         return id <= SwordService.MAX_SWORDS ? id : -1;
+    }
+
+    private int tierFromUpgradeSlot(int slot) {
+        return switch (slot) {
+            case 20 -> 1;
+            case 21 -> 2;
+            case 22 -> 3;
+            case 23 -> 4;
+            case 24 -> 5;
+            default -> -1;
+        };
     }
 
     private int enchantIndexFromSlot(int page, int slot) {
