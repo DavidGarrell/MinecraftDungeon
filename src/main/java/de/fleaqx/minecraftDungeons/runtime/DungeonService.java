@@ -51,6 +51,7 @@ public class DungeonService {
     private final Map<UUID, Long> lockedMessageCooldown = new ConcurrentHashMap<>();
     private final Map<UUID, Location> lastCombatLocations = new ConcurrentHashMap<>();
     private final Map<UUID, MobEntry> lastCombatMobTemplates = new ConcurrentHashMap<>();
+    private final Map<UUID, UUID> afkMobByPlayer = new ConcurrentHashMap<>();
 
     private final double baseHitsPerSecond;
     private final long resetIntervalTicks;
@@ -102,7 +103,7 @@ public class DungeonService {
             resetTask.cancel();
         }
 
-        sessions.values().forEach(this::clearSessionMobs);
+        sessions.values().forEach(session -> clearSessionMobs(session, true));
         sessions.clear();
         visibilityService.shutdown();
         profileService.saveAll();
@@ -227,7 +228,7 @@ public class DungeonService {
 
     public void forceStart(Player player, ZoneDefinition zone, int stage) {
         PlayerDungeonSession session = sessions.computeIfAbsent(player.getUniqueId(), PlayerDungeonSession::new);
-        clearSessionMobs(session);
+        clearSessionMobs(session, false);
         session.zone(zone);
         session.currentStage(stage);
         session.stageKills(0);
@@ -237,8 +238,9 @@ public class DungeonService {
     public void removePlayer(UUID playerId) {
         PlayerDungeonSession session = sessions.remove(playerId);
         if (session != null) {
-            clearSessionMobs(session);
+            clearSessionMobs(session, true);
         }
+        afkMobByPlayer.remove(playerId);
         lastCombatLocations.remove(playerId);
         lastCombatMobTemplates.remove(playerId);
     }
@@ -413,7 +415,7 @@ public class DungeonService {
         }
 
         if (session.zone() == null || !session.zone().id().equalsIgnoreCase(zone.id())) {
-            clearSessionMobs(session);
+            clearSessionMobs(session, false);
             session.zone(zone);
             int selected = selectedStage(player, zone.id());
             session.currentStage(selected);
@@ -437,7 +439,7 @@ public class DungeonService {
 
         List<MobEntry> candidateMobs = stage.mobs();
 
-        clearSessionMobs(session);
+        clearSessionMobs(session, false);
         session.stageKills(0);
 
         MobEntry preferredMob = lastCombatMobTemplates.get(player.getUniqueId());
@@ -552,12 +554,28 @@ public class DungeonService {
             return;
         }
 
+        UUID existingId = afkMobByPlayer.get(player.getUniqueId());
+        if (existingId != null) {
+            Entity existing = Bukkit.getEntity(existingId);
+            if (existing instanceof LivingEntity living
+                    && living.isValid()
+                    && canPlayerAttackMob(player, existingId)
+                    && isAfkMobFor(player, existingId)) {
+                session.activeMobs().add(existingId);
+                return;
+            }
+            afkMobByPlayer.remove(player.getUniqueId());
+        }
+
         Location location = afkMobDefinition.location().clone();
         if (location.getWorld() == null) {
             return;
         }
 
-        spawnManagedMob(player, session, 1, afkMobDefinition.mob(), location);
+        LivingEntity entity = spawnManagedMob(player, session, 1, afkMobDefinition.mob(), location);
+        if (entity != null) {
+            afkMobByPlayer.put(player.getUniqueId(), entity.getUniqueId());
+        }
     }
 
     private void spawnReplacementMob(Player player, PlayerDungeonSession session) {
@@ -591,11 +609,11 @@ public class DungeonService {
         spawnManagedMob(player, session, session.currentStage(), chosen, spawnLocation);
     }
 
-    private void spawnManagedMob(Player player, PlayerDungeonSession session, int level, MobEntry mob, Location spawnLocation) {
+    private LivingEntity spawnManagedMob(Player player, PlayerDungeonSession session, int level, MobEntry mob, Location spawnLocation) {
         Entity spawned = spawnLocation.getWorld().spawnEntity(spawnLocation, mob.entityType());
         if (!(spawned instanceof LivingEntity entity)) {
             spawned.remove();
-            return;
+            return null;
         }
 
         entity.setCanPickupItems(false);
@@ -610,6 +628,7 @@ public class DungeonService {
         hideFromOtherPlayers(player, entity);
 
         session.activeMobs().add(entity.getUniqueId());
+        return entity;
     }
 
     private void resetAllPlayerMobs() {
@@ -663,9 +682,13 @@ public class DungeonService {
         }
     }
 
-    private void clearSessionMobs(PlayerDungeonSession session) {
+    private void clearSessionMobs(PlayerDungeonSession session, boolean includeAfk) {
         Set<UUID> active = Set.copyOf(session.activeMobs());
         for (UUID mobId : active) {
+            if (!includeAfk && isAfkMobFor(session.playerId(), mobId)) {
+                continue;
+            }
+            boolean afkMob = isAfkMobId(mobId);
             Entity entity = Bukkit.getEntity(mobId);
             if (entity != null) {
                 rarityVisualService.clear(entity);
@@ -674,7 +697,23 @@ public class DungeonService {
             }
             virtualHealthService.remove(mobId);
             session.activeMobs().remove(mobId);
+            if (includeAfk && afkMob) {
+                afkMobByPlayer.remove(session.playerId(), mobId);
+            }
         }
+    }
+
+    private boolean isAfkMobFor(UUID playerId, UUID entityId) {
+        VirtualHealthService.VirtualHealth state = virtualHealthService.get(entityId);
+        return state != null
+                && state.owner().equals(playerId)
+                && state.mob() != null
+                && isAfkMob(state.mob().id());
+    }
+
+    private boolean isAfkMobId(UUID entityId) {
+        VirtualHealthService.VirtualHealth state = virtualHealthService.get(entityId);
+        return state != null && state.mob() != null && isAfkMob(state.mob().id());
     }
 
     private VisibilityService createVisibilityService(JavaPlugin plugin) {
@@ -698,7 +737,5 @@ public class DungeonService {
         }
     }
 }
-
-
 
 
