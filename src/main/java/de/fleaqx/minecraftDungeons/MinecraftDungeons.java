@@ -56,12 +56,12 @@ public final class MinecraftDungeons extends JavaPlugin {
         this.enchantService = new EnchantService(this, enchantConfigService, profileService);
         this.enchantService.reload();
 
-        this.swordPerkService = new SwordPerkService(profileService);
+        this.swordPerkService = new SwordPerkService(this, profileService);
         this.enchantService.setSwordPerkService(swordPerkService);
         dungeonService.setEnchantService(enchantService);
         dungeonService.setSwordPerkService(swordPerkService);
 
-        this.swordService = new SwordService(this, profileService, enchantService);
+        this.swordService = new SwordService(this, profileService, enchantService, swordPerkService);
         this.swordMenuService = new SwordMenuService(swordService, enchantService, swordPerkService);
 
         this.autoAttackService = new AutoAttackService(
@@ -88,7 +88,7 @@ public final class MinecraftDungeons extends JavaPlugin {
 
         PluginCommand dungeon = getCommand("dungeon");
         if (dungeon != null) {
-            DungeonCommand dungeonCommand = new DungeonCommand(dungeonService, enchantService);
+            DungeonCommand dungeonCommand = new DungeonCommand(this, dungeonService, enchantService, swordPerkService, swordService);
             dungeon.setExecutor(dungeonCommand);
             dungeon.setTabCompleter(dungeonCommand);
         }

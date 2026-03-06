@@ -29,13 +29,15 @@ public class SwordService {
     private final ProfileService profileService;
     private final EnchantService enchantService;
     private final SwordFormulaService formula;
+    private final SwordPerkService swordPerkService;
     private final NamespacedKey swordKey;
     private final List<SwordDefinition> definitions = new ArrayList<>();
 
-    public SwordService(JavaPlugin plugin, ProfileService profileService, EnchantService enchantService) {
+    public SwordService(JavaPlugin plugin, ProfileService profileService, EnchantService enchantService, SwordPerkService swordPerkService) {
         this.plugin = plugin;
         this.profileService = profileService;
         this.enchantService = enchantService;
+        this.swordPerkService = swordPerkService;
         this.formula = new SwordFormulaService(
                 plugin.getConfig().getDouble("sword.formula.base-damage", 1.0D),
                 plugin.getConfig().getDouble("sword.formula.level-damage-growth", 2.916D),
@@ -163,7 +165,9 @@ public class SwordService {
             lore.add(ChatColor.GRAY + "hand to access enchants");
             lore.add(" ");
             lore.add(ChatColor.AQUA + "Info");
-            lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Buff: " + ChatColor.RED + "None");
+            int perkLevel = swordPerkService.currentPerkLevel(player);
+            String perkSuffix = perkLevel > 0 ? " " + roman(perkLevel) : "";
+            lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Perk: " + ChatColor.RED + swordPerkService.currentPerkName(player) + perkSuffix);
             lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Essence Boost: " + ChatColor.AQUA + "0%");
             lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Tier: " + ChatColor.AQUA + tier);
             lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Level: " + ChatColor.AQUA + enchantService.toolLevel(player));
@@ -222,6 +226,17 @@ public class SwordService {
         return out;
     }
 
+
+    private String roman(int number) {
+        return switch (number) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            case 5 -> "V";
+            default -> "-";
+        };
+    }
     private String progressBar(Player player) {
         BigInteger xp = enchantService.toolXp(player);
         BigInteger need = enchantService.toolXpRequiredNext(player);
