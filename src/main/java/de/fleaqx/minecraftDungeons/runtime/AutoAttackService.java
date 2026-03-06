@@ -15,6 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class AutoAttackService {
 
+    private static final int RETARGET_GRACE_TICKS = 40;
+
     private final JavaPlugin plugin;
     private final DungeonService dungeonService;
     private final DamageIndicatorService damageIndicatorService;
@@ -96,13 +98,18 @@ public class AutoAttackService {
             LivingEntity target = null;
             if (entity instanceof LivingEntity living && living.isValid() && dungeonService.canPlayerAttackMob(player, living.getUniqueId())) {
                 target = living;
+                state.missingTicks(0);
             } else {
                 target = findNextTarget(player, state.targetId());
                 if (target == null) {
-                    stop(state.playerId());
+                    state.missingTicks(state.missingTicks() + 1);
+                    if (state.missingTicks() >= RETARGET_GRACE_TICKS) {
+                        stop(state.playerId());
+                    }
                     continue;
                 }
                 state.targetId(target.getUniqueId());
+                state.missingTicks(0);
             }
 
             if (!sameWorld(player, target) || player.getLocation().distanceSquared(target.getLocation()) > 25.0D) {
@@ -138,7 +145,7 @@ public class AutoAttackService {
         enchantService.grantHitXp(player);
 
         if (result.dead()) {
-            stop(player.getUniqueId());
+            state.missingTicks(0);
         }
     }
 
@@ -172,6 +179,7 @@ public class AutoAttackService {
         private UUID targetId;
         private final BigInteger damage;
         private long nextAttackNano;
+        private int missingTicks;
 
         private AutoAttackState(UUID playerId, UUID targetId, BigInteger damage, long nextAttackNano) {
             this.playerId = playerId;
@@ -202,6 +210,14 @@ public class AutoAttackService {
 
         public void nextAttackNano(long nextAttackNano) {
             this.nextAttackNano = nextAttackNano;
+        }
+
+        public int missingTicks() {
+            return missingTicks;
+        }
+
+        public void missingTicks(int missingTicks) {
+            this.missingTicks = missingTicks;
         }
     }
 }

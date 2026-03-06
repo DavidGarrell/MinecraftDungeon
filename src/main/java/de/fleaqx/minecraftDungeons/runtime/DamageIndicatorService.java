@@ -23,16 +23,23 @@ public class DamageIndicatorService {
     }
 
     public void spawnDamage(Player viewer, Entity target, BigInteger damage) {
-        spawnText(viewer, target, ChatColor.RED + "\u2764" + NumberFormat.compact(damage));
+        Location base = target.getLocation().clone().add(0, 0.6, 0);
+        Location spawn = base.add(randomOffset(0.6), ThreadLocalRandom.current().nextDouble(0.0, 0.45), randomOffset(0.6));
+        Vector velocity = randomDirection().multiply(0.07).setY(ThreadLocalRandom.current().nextDouble(0.03, 0.07));
+        spawnText(viewer, spawn, ChatColor.RED + "\u2764" + NumberFormat.compact(damage), velocity, 30, 0.92);
     }
 
     public void spawnReward(Player viewer, Entity target, String text) {
-        spawnText(viewer, target, text);
+        Location spawn = target.getLocation().clone().add(0.0, 1.05, 0.0);
+        String formatted = ChatColor.BOLD + text;
+        Vector velocity = new Vector(randomOffset(0.01), 0.055, randomOffset(0.01));
+        spawnText(viewer, spawn, formatted, velocity, 45, 0.95);
     }
 
-    private void spawnText(Player viewer, Entity target, String text) {
-        Location base = target.getLocation().clone().add(0, 0.6, 0);
-        Location spawn = base.add(randomOffset(0.6), ThreadLocalRandom.current().nextDouble(0.0, 0.45), randomOffset(0.6));
+    private void spawnText(Player viewer, Location spawn, String text, Vector velocity, int maxTicks, double drag) {
+        if (spawn.getWorld() == null) {
+            return;
+        }
 
         ArmorStand stand = spawn.getWorld().spawn(spawn, ArmorStand.class, as -> {
             as.setMarker(true);
@@ -51,20 +58,19 @@ public class DamageIndicatorService {
             }
         }
 
-        Vector velocity = randomDirection().multiply(0.07).setY(ThreadLocalRandom.current().nextDouble(0.03, 0.07));
         new BukkitRunnable() {
             private int ticks;
 
             @Override
             public void run() {
-                if (!stand.isValid() || ticks > 30) {
+                if (!stand.isValid() || ticks > maxTicks) {
                     stand.remove();
                     cancel();
                     return;
                 }
 
                 stand.teleport(stand.getLocation().add(velocity));
-                velocity.multiply(0.92);
+                velocity.multiply(drag);
                 ticks++;
             }
         }.runTaskTimer(plugin, 1L, 1L);
