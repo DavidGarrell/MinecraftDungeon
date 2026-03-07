@@ -303,7 +303,8 @@ public class SwordPerkService {
                 readValues(section, "souls"),
                 readValues(section, "sword-xp"),
                 readValues(section, "money"),
-                readValues(section, "essence")
+                readValues(section, "essence"),
+                section.getStringList("lore")
         );
     }
 
@@ -337,7 +338,8 @@ public class SwordPerkService {
                 new double[]{0.30D, 0.60D, 0.90D, 1.20D, 1.50D},
                 new double[]{0.12D, 0.24D, 0.36D, 0.48D, 0.60D},
                 new double[]{0.10D, 0.20D, 0.30D, 0.40D, 0.50D},
-                new double[]{0.30D, 0.60D, 0.90D, 1.20D, 1.50D}
+                new double[]{0.30D, 0.60D, 0.90D, 1.20D, 1.50D},
+                List.of("Default all-round perk.")
         );
     }
 
@@ -350,7 +352,7 @@ public class SwordPerkService {
 
     public record PerkDefinition(String id, String displayName, String rarity, int weight,
                                  double[] attackSpeed, double[] enchantProc, double[] souls, double[] swordXp, double[] money,
-                                 double[] essence) {
+                                 double[] essence, List<String> lore) {
     }
 
     public record ShopOffer(int points, int cost) {

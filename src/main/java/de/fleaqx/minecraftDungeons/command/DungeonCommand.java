@@ -1,5 +1,7 @@
 package de.fleaqx.minecraftDungeons.command;
 
+import de.fleaqx.minecraftDungeons.companion.CompanionService;
+import de.fleaqx.minecraftDungeons.companion.ui.CompanionMenuService;
 import de.fleaqx.minecraftDungeons.currency.NumberFormat;
 import de.fleaqx.minecraftDungeons.enchant.EnchantService;
 import de.fleaqx.minecraftDungeons.model.ZoneDefinition;
@@ -26,13 +28,17 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
     private final EnchantService enchantService;
     private final SwordPerkService swordPerkService;
     private final SwordService swordService;
+    private final CompanionService companionService;
+    private final CompanionMenuService companionMenuService;
 
-    public DungeonCommand(JavaPlugin plugin, DungeonService dungeonService, EnchantService enchantService, SwordPerkService swordPerkService, SwordService swordService) {
+    public DungeonCommand(JavaPlugin plugin, DungeonService dungeonService, EnchantService enchantService, SwordPerkService swordPerkService, SwordService swordService, CompanionService companionService, CompanionMenuService companionMenuService) {
         this.plugin = plugin;
         this.dungeonService = dungeonService;
         this.enchantService = enchantService;
         this.swordPerkService = swordPerkService;
         this.swordService = swordService;
+        this.companionService = companionService;
+        this.companionMenuService = companionMenuService;
     }
 
     @Override
@@ -42,6 +48,7 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/dungeon start <zone> [stage]");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon enchant <reload|list|setlevel|addlevel|settoollevel|addtoolxp>");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon perk <reload|list|set|addpoints>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion <setlocation|egg|ui>");
             return true;
         }
 
@@ -108,6 +115,10 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             return handlePerkAdmin(sender, args);
+        }
+
+        if (args[0].equalsIgnoreCase("companion")) {
+            return handleCompanion(sender, args);
         }
 
         return true;
@@ -284,10 +295,102 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private boolean handleCompanion(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion setlocation <zoneId> <stage>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion egg <zoneId> <stage> [player]");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion ui [player]");
+            return true;
+        }
+
+        switch (args[1].toLowerCase()) {
+            case "setlocation" -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage(ChatColor.RED + "Players only.");
+                    return true;
+                }
+                if (!sender.hasPermission("minecraftdungeons.admin")) {
+                    sender.sendMessage(ChatColor.RED + "No permission.");
+                    return true;
+                }
+                if (args.length < 4) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon companion setlocation <zoneId> <stage>");
+                    return true;
+                }
+                int stage;
+                try {
+                    stage = Integer.parseInt(args[3]);
+                } catch (Exception exception) {
+                    sender.sendMessage(ChatColor.RED + "Invalid stage.");
+                    return true;
+                }
+                companionService.setEggLocation(args[2], stage, player.getLocation());
+                sender.sendMessage(ChatColor.GREEN + "Companion egg location set for " + args[2] + " stage " + stage + ".");
+                return true;
+            }
+            case "egg" -> {
+                if (!(sender instanceof Player self)) {
+                    sender.sendMessage(ChatColor.RED + "Players only.");
+                    return true;
+                }
+                if (args.length < 4) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon companion egg <zoneId> <stage> [player]");
+                    return true;
+                }
+                Player target = self;
+                if (args.length >= 5) {
+                    if (!sender.hasPermission("minecraftdungeons.admin")) {
+                        sender.sendMessage(ChatColor.RED + "No permission.");
+                        return true;
+                    }
+                    target = Bukkit.getPlayerExact(args[4]);
+                    if (target == null) {
+                        sender.sendMessage(ChatColor.RED + "Player not found.");
+                        return true;
+                    }
+                }
+                int stage;
+                try {
+                    stage = Integer.parseInt(args[3]);
+                } catch (Exception exception) {
+                    sender.sendMessage(ChatColor.RED + "Invalid stage.");
+                    return true;
+                }
+                companionMenuService.openEggMenu(target, args[2], stage);
+                return true;
+            }
+            case "ui" -> {
+                Player target;
+                if (args.length >= 3) {
+                    if (!sender.hasPermission("minecraftdungeons.admin")) {
+                        sender.sendMessage(ChatColor.RED + "No permission.");
+                        return true;
+                    }
+                    target = Bukkit.getPlayerExact(args[2]);
+                    if (target == null) {
+                        sender.sendMessage(ChatColor.RED + "Player not found.");
+                        return true;
+                    }
+                } else if (sender instanceof Player player) {
+                    target = player;
+                } else {
+                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon companion ui <player>");
+                    return true;
+                }
+                companionMenuService.openCompanions(target);
+                return true;
+            }
+            default -> {
+                sender.sendMessage(ChatColor.RED + "Unknown companion subcommand.");
+                return true;
+            }
+        }
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return List.of("reload", "start", "enchant", "perk");
+            return List.of("reload", "start", "enchant", "perk", "companion");
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) {
@@ -304,6 +407,10 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 2 && args[0].equalsIgnoreCase("perk")) {
             return List.of("reload", "list", "set", "addpoints");
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("companion")) {
+            return List.of("setlocation", "egg", "ui");
         }
 
         if (args.length == 3 && args[0].equalsIgnoreCase("enchant")
@@ -323,6 +430,22 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 4 && args[0].equalsIgnoreCase("perk") && args[1].equalsIgnoreCase("set")) {
             return swordPerkService.availablePerks().stream().map(SwordPerkService.PerkDefinition::id).toList();
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("companion") && args[1].equalsIgnoreCase("setlocation")) {
+            return dungeonService.zones().stream().map(ZoneDefinition::id).toList();
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("companion") && args[1].equalsIgnoreCase("ui")) {
+            return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("companion") && args[1].equalsIgnoreCase("egg")) {
+            return dungeonService.zones().stream().map(ZoneDefinition::id).toList();
+        }
+
+        if (args.length == 5 && args[0].equalsIgnoreCase("companion") && args[1].equalsIgnoreCase("egg")) {
+            return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
         }
 
         return List.of();
