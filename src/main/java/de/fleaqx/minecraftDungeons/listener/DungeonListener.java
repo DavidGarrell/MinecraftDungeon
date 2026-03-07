@@ -168,6 +168,14 @@ public class DungeonListener implements Listener {
     @EventHandler
     public void onInteractAfk(PlayerInteractAtEntityEvent event) {
         Player player = event.getPlayer();
+
+        java.util.Optional<CompanionService.EggPoint> eggPoint = companionService.eggPointByEntity(event.getRightClicked());
+        if (eggPoint.isPresent()) {
+            event.setCancelled(true);
+            companionMenuService.openEggMenu(player, eggPoint.get().zoneId(), eggPoint.get().stage());
+            return;
+        }
+
         if (dungeonService.isAfkMobFor(player, event.getRightClicked().getUniqueId())) {
             event.setCancelled(true);
             swordMenuService.openMain(player);
