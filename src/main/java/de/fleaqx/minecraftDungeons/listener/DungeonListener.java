@@ -1,5 +1,7 @@
 package de.fleaqx.minecraftDungeons.listener;
 
+import de.fleaqx.minecraftDungeons.companion.CompanionService;
+import de.fleaqx.minecraftDungeons.companion.ui.CompanionMenuService;
 import de.fleaqx.minecraftDungeons.runtime.AutoAttackService;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.runtime.VirtualHealthService;
@@ -37,24 +39,31 @@ public class DungeonListener implements Listener {
     private final AutoAttackService autoAttackService;
     private final SwordService swordService;
     private final SwordMenuService swordMenuService;
+    private final CompanionService companionService;
+    private final CompanionMenuService companionMenuService;
 
     public DungeonListener(DungeonService dungeonService,
                            VirtualHealthService virtualHealthService,
                            ZoneMenuService zoneMenuService,
                            AutoAttackService autoAttackService,
                            SwordService swordService,
-                           SwordMenuService swordMenuService) {
+                           SwordMenuService swordMenuService,
+                           CompanionService companionService,
+                           CompanionMenuService companionMenuService) {
         this.dungeonService = dungeonService;
         this.virtualHealthService = virtualHealthService;
         this.zoneMenuService = zoneMenuService;
         this.autoAttackService = autoAttackService;
         this.swordService = swordService;
         this.swordMenuService = swordMenuService;
+        this.companionService = companionService;
+        this.companionMenuService = companionMenuService;
     }
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         swordService.ensureSwordInSlot(event.getPlayer());
+        companionService.ensureControllerInSlot(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -111,12 +120,16 @@ public class DungeonListener implements Listener {
         if (swordMenuService.handleClick(event)) {
             return;
         }
+        if (companionMenuService.handleClick(event)) {
+            return;
+        }
         zoneMenuService.handleClick(event);
     }
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
         swordMenuService.handleClose(event);
+        companionMenuService.handleClose(event);
         zoneMenuService.handleClose(event);
     }
 
@@ -135,6 +148,20 @@ public class DungeonListener implements Listener {
         if (rightClick && player.getInventory().getHeldItemSlot() == 0 && swordService.isManagedSword(player.getInventory().getItemInMainHand())) {
             event.setCancelled(true);
             swordMenuService.openMain(player);
+            return;
+        }
+
+        if (rightClick && companionService.isController(player.getInventory().getItemInMainHand())) {
+            event.setCancelled(true);
+            companionMenuService.openCompanions(player);
+            return;
+        }
+
+        if (rightClick) {
+            companionService.nearbyEgg(player, 3.5D).ifPresent(point -> {
+                event.setCancelled(true);
+                companionMenuService.openEggMenu(player, point.zoneId(), point.stage());
+            });
         }
     }
 
@@ -158,6 +185,10 @@ public class DungeonListener implements Listener {
             } else {
                 event.getPlayer().sendMessage(ChatColor.RED + "No affordable sword upgrade.");
             }
+        }
+
+        if (companionService.isController(event.getItemDrop().getItemStack())) {
+            event.setCancelled(true);
         }
     }
 

@@ -7,6 +7,7 @@ import de.fleaqx.minecraftDungeons.enchant.EnchantService;
 import de.fleaqx.minecraftDungeons.sword.SwordDefinition;
 import de.fleaqx.minecraftDungeons.sword.SwordService;
 import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
+import de.fleaqx.minecraftDungeons.ui.HeadItemFactory;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -167,7 +168,7 @@ public class SwordMenuService {
     public void openPerks(Player player) {
         Inventory inv = Bukkit.createInventory(player, 54, "Sword Perks");
 
-        inv.setItem(0, item(Material.BLAZE_ROD, ChatColor.YELLOW + "Roll Perk", List.of(
+        inv.setItem(0, HeadItemFactory.head("http://textures.minecraft.net/texture/3772db39ccf2a33f71f71a889f06e1492122ab0e8625995fe9ad49fdb02f4f24", ChatColor.GREEN + "Roll Sword Perk", List.of(
                 ChatColor.GRAY + "Cost: " + ChatColor.RED + "1 Perk Point",
                 ChatColor.GRAY + "Available: " + ChatColor.AQUA + swordPerkService.perkPoints(player),
                 ChatColor.GREEN + "Click to roll"
@@ -189,11 +190,11 @@ public class SwordMenuService {
                 ChatColor.GRAY + "Current rolls: " + ChatColor.YELLOW + swordPerkService.perkRolls(player)
         )));
 
-        inv.setItem(20, item(Material.BOOKSHELF, ChatColor.GREEN + "Perk Codex", List.of(
+        inv.setItem(20, HeadItemFactory.head("http://textures.minecraft.net/texture/e9e123405f7534ff95f966f235f5f60365aa2184141f24a4f7ab95687f850ca2", ChatColor.GREEN + "Perk Codex", List.of(
                 ChatColor.GRAY + "Click to see all possible perks"
         )));
 
-        inv.setItem(22, item(Material.REDSTONE_BLOCK, ChatColor.RED + "Current Perk", List.of(
+        inv.setItem(22, HeadItemFactory.head("http://textures.minecraft.net/texture/d01afe973c60323f6da20eb664004fbfbeb94e4fc3418f7a9ff313dd7f5f46f", ChatColor.RED + "Current Perk", List.of(
                 ChatColor.GRAY + "Perk: " + ChatColor.WHITE + swordPerkService.currentPerkName(player),
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + swordPerkService.currentPerkLevel(player),
                 ChatColor.GRAY + "Rarity: " + ChatColor.LIGHT_PURPLE + swordPerkService.currentPerkRarity(player),
@@ -236,6 +237,10 @@ public class SwordMenuService {
             lore.add(ChatColor.GRAY + "Rarity: " + ChatColor.LIGHT_PURPLE + perk.rarity());
             lore.add(ChatColor.GRAY + "Weight: " + ChatColor.YELLOW + perk.weight());
             lore.add(" ");
+            for (String line : perk.lore()) {
+                lore.add(ChatColor.GRAY + line);
+            }
+            lore.add(" ");
             for (int level = 1; level <= 5; level++) {
                 lore.add(ChatColor.RED + "Level " + level + ChatColor.GRAY
                         + " - AS " + percent(perk.attackSpeed()[level - 1])
@@ -245,7 +250,7 @@ public class SwordMenuService {
                         + ", Money " + percent(perk.money()[level - 1])
                         + ", Essence " + percent(perk.essence()[level - 1]));
             }
-            inv.setItem(slot, item(Material.BLAZE_ROD, ChatColor.RED + perk.displayName(), lore));
+            inv.setItem(slot, HeadItemFactory.head("http://textures.minecraft.net/texture/3474fbcf8f2840fc2d5cb35a30258f671fc5f0644f05f8ed3ef31f8f5da4db2", ChatColor.RED + perk.displayName(), lore));
             slot++;
         }
 

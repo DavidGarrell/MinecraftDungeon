@@ -12,6 +12,7 @@ import de.fleaqx.minecraftDungeons.model.ZoneDefinition;
 import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.profile.ProfileService;
 import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
+import de.fleaqx.minecraftDungeons.companion.CompanionService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -47,6 +48,7 @@ public class DungeonService {
     private final DamageIndicatorService damageIndicatorService;
     private EnchantService enchantService;
     private SwordPerkService swordPerkService;
+    private CompanionService companionService;
 
     private final Map<String, ZoneDefinition> zones = new HashMap<>();
     private final Map<UUID, PlayerDungeonSession> sessions = new ConcurrentHashMap<>();
@@ -123,6 +125,10 @@ public class DungeonService {
 
     public void setSwordPerkService(SwordPerkService swordPerkService) {
         this.swordPerkService = swordPerkService;
+    }
+
+    public void setCompanionService(CompanionService companionService) {
+        this.companionService = companionService;
     }
 
     public Collection<ZoneDefinition> zones() {
@@ -689,6 +695,10 @@ public class DungeonService {
             if (essence.compareTo(java.math.BigInteger.ZERO) > 0) {
                 essence = scaleByMultiplier(essence, swordPerkService.essenceMultiplier(player));
             }
+        }
+
+        if (companionService != null && money.compareTo(java.math.BigInteger.ZERO) > 0) {
+            money = scaleByMultiplier(money, companionService.moneyMultiplier(player));
         }
 
         profile.add(CurrencyType.MONEY, money);

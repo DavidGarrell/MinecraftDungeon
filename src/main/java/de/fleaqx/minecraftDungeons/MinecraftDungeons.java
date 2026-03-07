@@ -3,6 +3,8 @@ package de.fleaqx.minecraftDungeons;
 import de.fleaqx.minecraftDungeons.command.DungeonCommand;
 import de.fleaqx.minecraftDungeons.command.PayCommand;
 import de.fleaqx.minecraftDungeons.command.ZoneCommand;
+import de.fleaqx.minecraftDungeons.companion.CompanionService;
+import de.fleaqx.minecraftDungeons.companion.ui.CompanionMenuService;
 import de.fleaqx.minecraftDungeons.config.ZoneConfigService;
 import de.fleaqx.minecraftDungeons.enchant.EnchantConfigService;
 import de.fleaqx.minecraftDungeons.enchant.EnchantService;
@@ -34,6 +36,8 @@ public final class MinecraftDungeons extends JavaPlugin {
     private SwordMenuService swordMenuService;
     private EnchantService enchantService;
     private SwordPerkService swordPerkService;
+    private CompanionService companionService;
+    private CompanionMenuService companionMenuService;
 
     @Override
     public void onEnable() {
@@ -64,6 +68,11 @@ public final class MinecraftDungeons extends JavaPlugin {
         this.swordService = new SwordService(this, profileService, enchantService, swordPerkService);
         this.swordMenuService = new SwordMenuService(swordService, enchantService, swordPerkService);
 
+        this.companionService = new CompanionService(this, profileService, dungeonService);
+        this.companionService.init();
+        this.companionMenuService = new CompanionMenuService(companionService);
+        dungeonService.setCompanionService(companionService);
+
         this.autoAttackService = new AutoAttackService(
                 this,
                 dungeonService,
@@ -75,7 +84,7 @@ public final class MinecraftDungeons extends JavaPlugin {
         dungeonService.start();
         autoAttackService.start();
         getServer().getPluginManager().registerEvents(
-                new DungeonListener(dungeonService, virtualHealthService, zoneMenuService, autoAttackService, swordService, swordMenuService),
+                new DungeonListener(dungeonService, virtualHealthService, zoneMenuService, autoAttackService, swordService, swordMenuService, companionService, companionMenuService),
                 this
         );
 
@@ -88,7 +97,7 @@ public final class MinecraftDungeons extends JavaPlugin {
 
         PluginCommand dungeon = getCommand("dungeon");
         if (dungeon != null) {
-            DungeonCommand dungeonCommand = new DungeonCommand(this, dungeonService, enchantService, swordPerkService, swordService);
+            DungeonCommand dungeonCommand = new DungeonCommand(this, dungeonService, enchantService, swordPerkService, swordService, companionService, companionMenuService);
             dungeon.setExecutor(dungeonCommand);
             dungeon.setTabCompleter(dungeonCommand);
         }
@@ -105,6 +114,9 @@ public final class MinecraftDungeons extends JavaPlugin {
     public void onDisable() {
         if (autoAttackService != null) {
             autoAttackService.shutdown();
+        }
+        if (companionService != null) {
+            companionService.save();
         }
         if (dungeonService != null) {
             dungeonService.shutdown();

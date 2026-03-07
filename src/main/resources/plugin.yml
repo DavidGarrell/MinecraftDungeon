@@ -10,7 +10,7 @@ commands:
     usage: /zone [max|balance|admin]
   dungeon:
     description: Dungeon debug command
-    usage: /dungeon <reload|start|enchant|perk>
+    usage: /dungeon <reload|start|enchant|perk|companion>
     permission: minecraftdungeons.admin
   pay:
     description: Pay souls/essence/shards to another player
@@ -18,3 +18,10 @@ commands:
 permissions:
   minecraftdungeons.admin:
     default: op
+
+  minecraftdungeons.companions.extra.1:
+    default: false
+  minecraftdungeons.companions.extra.2:
+    default: false
+  minecraftdungeons.companions.extra.3:
+    default: false
