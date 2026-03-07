@@ -37,11 +37,7 @@ public class CompanionMenuService {
             return;
         }
 
-        dungeonService.currentZoneContext(player)
-                .ifPresentOrElse(
-                        context -> openEggMenu(player, context.zoneId(), context.stage()),
-                        () -> openCompanions(player, 1, false, Set.of(), null, null, null, null)
-                );
+        openCompanions(player, 1, false, Set.of(), null, null, null, null);
     }
 
     private void openCompanions(Player player,

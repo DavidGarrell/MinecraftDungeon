@@ -145,6 +145,17 @@ public class DungeonListener implements Listener {
 
         Action action = event.getAction();
         boolean rightClick = action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK;
+
+        if (rightClick && event.getClickedBlock() != null) {
+            companionService.eggPointAtBlock(event.getClickedBlock()).ifPresent(point -> {
+                event.setCancelled(true);
+                companionMenuService.openEggMenu(player, point.zoneId(), point.stage());
+            });
+            if (event.isCancelled()) {
+                return;
+            }
+        }
+
         if (rightClick && player.getInventory().getHeldItemSlot() == 0 && swordService.isManagedSword(player.getInventory().getItemInMainHand())) {
             event.setCancelled(true);
             swordMenuService.openMain(player);
