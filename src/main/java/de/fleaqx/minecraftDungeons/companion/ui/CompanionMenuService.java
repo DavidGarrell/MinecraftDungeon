@@ -2,6 +2,7 @@ package de.fleaqx.minecraftDungeons.companion.ui;
 
 import de.fleaqx.minecraftDungeons.companion.CompanionService;
 import de.fleaqx.minecraftDungeons.currency.NumberFormat;
+import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.ui.HeadItemFactory;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -21,15 +22,26 @@ public class CompanionMenuService {
     private static final int PAGE_SIZE = 27;
 
     private final CompanionService companionService;
+    private final DungeonService dungeonService;
     private final Map<UUID, MenuContext> contexts = new HashMap<>();
 
-    public CompanionMenuService(CompanionService companionService) {
+    public CompanionMenuService(CompanionService companionService, DungeonService dungeonService) {
         this.companionService = companionService;
+        this.dungeonService = dungeonService;
     }
 
     public void openCompanions(Player player) {
-        MenuContext existing = contexts.getOrDefault(player.getUniqueId(), MenuContext.base());
-        openCompanions(player, existing.page(), existing.selectionMode(), existing.selectedIds(), existing.awaitingDeleteConfirm(), existing.awaitingBulkConfirm(), existing.pendingBulkMode(), existing.pendingBulkValue());
+        MenuContext existing = contexts.get(player.getUniqueId());
+        if (existing != null && "companions".equals(existing.menu())) {
+            openCompanions(player, existing.page(), existing.selectionMode(), existing.selectedIds(), existing.awaitingDeleteConfirm(), existing.awaitingBulkConfirm(), existing.pendingBulkMode(), existing.pendingBulkValue());
+            return;
+        }
+
+        dungeonService.currentZoneContext(player)
+                .ifPresentOrElse(
+                        context -> openEggMenu(player, context.zoneId(), context.stage()),
+                        () -> openCompanions(player, 1, false, Set.of(), null, null, null, null)
+                );
     }
 
     private void openCompanions(Player player,
@@ -43,6 +55,20 @@ public class CompanionMenuService {
         Inventory inv = Bukkit.createInventory(player, 54, "Companions");
         int maxSlots = companionService.maxEquipSlots(player);
         List<CompanionService.OwnedCompanion> equipped = companionService.equipped(player);
+
+        String activeZoneId = null;
+        int activeStage = 1;
+        Optional<DungeonService.PlayerZoneContext> zoneContext = dungeonService.currentZoneContext(player);
+        if (zoneContext.isPresent()) {
+            activeZoneId = zoneContext.get().zoneId();
+            activeStage = Math.max(1, zoneContext.get().stage());
+        } else if (contexts.containsKey(player.getUniqueId())) {
+            MenuContext previous = contexts.get(player.getUniqueId());
+            if (previous.zoneId() != null && !previous.zoneId().isBlank()) {
+                activeZoneId = previous.zoneId();
+                activeStage = Math.max(1, previous.stage());
+            }
+        }
 
         for (int i = 0; i < 6; i++) {
             boolean unlocked = i < maxSlots;
@@ -74,10 +100,12 @@ public class CompanionMenuService {
         inv.setItem(50, item(Material.BLAZE_ROD, ChatColor.RED + "Next", List.of(ChatColor.GRAY + "Go to next page")));
         inv.setItem(52, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
         inv.setItem(53, item(Material.DIAMOND, ChatColor.AQUA + "Equip Best", List.of(ChatColor.GREEN + "Click to equip best!")));
+        inv.setItem(47, dragonEggShortcutItem(activeZoneId, activeStage));
+        inv.setItem(49, companionHudItem(activeZoneId, activeStage));
 
         fill(inv);
         player.openInventory(inv);
-        contexts.put(player.getUniqueId(), new MenuContext("companions", null, 1, safePage, selectionMode,
+        contexts.put(player.getUniqueId(), new MenuContext("companions", activeZoneId, activeStage, safePage, selectionMode,
                 new HashSet<>(selectedIds), awaitingDeleteConfirm, awaitingBulkConfirm, pendingBulkMode, pendingBulkValue));
     }
 
@@ -126,6 +154,10 @@ public class CompanionMenuService {
     }
 
     public void openEggMenu(Player player, String zoneId, int stage) {
+        if (zoneId == null || zoneId.isBlank()) {
+            return;
+        }
+        zoneId = zoneId.toLowerCase(Locale.ROOT);
         Inventory inv = Bukkit.createInventory(player, 54, "Companion Eggs");
 
         long price = companionService.costPerDraw(stage);
@@ -141,6 +173,12 @@ public class CompanionMenuService {
                         ChatColor.WHITE + "Right Click to view »"
                 )
         ));
+
+        inv.setItem(4, item(Material.NETHER_STAR, ChatColor.AQUA + "Companion HUD", List.of(
+                ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
+                ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
+                ChatColor.GRAY + "Price / Egg: " + ChatColor.GREEN + NumberFormat.compact(BigInteger.valueOf(price)) + " Money"
+        )));
 
         int[] previewSlots = new int[]{20, 22, 24, 30, 32};
         List<CompanionService.CompanionDefinition> previews = companionService.previewCompanions(zoneId);
@@ -199,6 +237,11 @@ public class CompanionMenuService {
             }
             if (slot == 49) {
                 openCompanions(player);
+                return true;
+            }
+            if (slot == 13) {
+                player.sendMessage(ChatColor.YELLOW + "Use Open buttons below to hatch companions.");
+                return true;
             }
             return true;
         }
@@ -256,6 +299,14 @@ public class CompanionMenuService {
             companionService.equipBest(player);
             player.sendMessage(ChatColor.GREEN + "Equipped best companions.");
             openCompanions(player, ctx.page(), ctx.selectionMode(), ctx.selectedIds(), null, ctx.awaitingBulkConfirm(), ctx.pendingBulkMode(), ctx.pendingBulkValue());
+            return true;
+        }
+        if (slot == 47) {
+            if (ctx.zoneId() == null || ctx.zoneId().isBlank()) {
+                player.sendMessage(ChatColor.RED + "No active zone found. Enter a zone first.");
+            } else {
+                openEggMenu(player, ctx.zoneId(), ctx.stage());
+            }
             return true;
         }
         if (slot == 50) {
@@ -375,6 +426,37 @@ public class CompanionMenuService {
                         " ",
                         ChatColor.YELLOW + "[Zone " + capitalize(zoneId) + " Stage " + stage + "]"
                 ));
+    }
+
+    private ItemStack dragonEggShortcutItem(String zoneId, int stage) {
+        if (zoneId == null || zoneId.isBlank()) {
+            return item(Material.DRAGON_EGG, ChatColor.DARK_GRAY + "Dragon Egg", List.of(
+                    ChatColor.GRAY + "No active zone found.",
+                    ChatColor.YELLOW + "Enter a zone to hatch companions."
+            ));
+        }
+
+        return item(Material.DRAGON_EGG, ChatColor.LIGHT_PURPLE + "Dragon Egg", List.of(
+                ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
+                ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
+                ChatColor.GREEN + "Click to open companion eggs"
+        ));
+    }
+
+    private ItemStack companionHudItem(String zoneId, int stage) {
+        if (zoneId == null || zoneId.isBlank()) {
+            return item(Material.COMPASS, ChatColor.GRAY + "Companion HUD", List.of(
+                    ChatColor.GRAY + "Zone: " + ChatColor.RED + "Unknown",
+                    ChatColor.GRAY + "Stage: " + ChatColor.RED + "-"
+            ));
+        }
+
+        long price = companionService.costPerDraw(stage);
+        return item(Material.COMPASS, ChatColor.AQUA + "Companion HUD", List.of(
+                ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
+                ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
+                ChatColor.GRAY + "Price / Egg: " + ChatColor.GREEN + NumberFormat.compact(BigInteger.valueOf(price)) + " Money"
+        ));
     }
 
     private ItemStack deleteToggleItem(boolean enabled, String awaitingConfirm) {
