@@ -70,7 +70,7 @@ public final class MinecraftDungeons extends JavaPlugin {
 
         this.companionService = new CompanionService(this, profileService, dungeonService);
         this.companionService.init();
-        this.companionMenuService = new CompanionMenuService(companionService);
+        this.companionMenuService = new CompanionMenuService(companionService, dungeonService);
         dungeonService.setCompanionService(companionService);
 
         this.autoAttackService = new AutoAttackService(

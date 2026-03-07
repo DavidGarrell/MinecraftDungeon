@@ -27,6 +27,9 @@ import java.util.UUID;
 public class SwordMenuService {
 
     private static final int[] GRID_SLOTS = new int[]{10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43};
+    private static final String VIEW_SKINS = "skins";
+    private static final String VIEW_SOULS = "souls";
+    private static final String VIEW_ESSENCE = "essence";
 
     private final SwordService swordService;
     private final EnchantService enchantService;
@@ -40,31 +43,31 @@ public class SwordMenuService {
     }
 
     public void openMain(Player player) {
-        openMain(player, MainView.SOULS, 0);
+        openMain(player, VIEW_SOULS, 0);
     }
 
     public void openSkins(Player player, int page) {
-        openMain(player, MainView.SKINS, page);
+        openMain(player, VIEW_SKINS, page);
     }
 
     public void openEnchants(Player player, EnchantCategory category, int page) {
-        openMain(player, category == EnchantCategory.ESSENCE ? MainView.ESSENCE : MainView.SOULS, page);
+        openMain(player, category == EnchantCategory.ESSENCE ? VIEW_ESSENCE : VIEW_SOULS, page);
     }
 
-    private void openMain(Player player, MainView view, int page) {
+    private void openMain(Player player, String view, int page) {
         Inventory inv = Bukkit.createInventory(player, 54, "Sword Enchants");
 
         int maxPage = maxPageForView(view);
         int safePage = Math.max(0, Math.min(page, maxPage));
 
         inv.setItem(2, item(Material.NETHER_STAR,
-                (view == MainView.SKINS ? ChatColor.GREEN : ChatColor.LIGHT_PURPLE) + "Skins" + (view == MainView.SKINS ? ChatColor.GREEN + " (SELECTED)" : ""),
+                (VIEW_SKINS.equals(view) ? ChatColor.GREEN : ChatColor.LIGHT_PURPLE) + "Skins" + (VIEW_SKINS.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
                 List.of(ChatColor.GRAY + "Klicke um Skins anzuzeigen.")));
         inv.setItem(4, item(Material.BLAZE_POWDER,
-                (view == MainView.SOULS ? ChatColor.GREEN : ChatColor.GOLD) + "Souls Enchants" + (view == MainView.SOULS ? ChatColor.GREEN + " (SELECTED)" : ""),
+                (VIEW_SOULS.equals(view) ? ChatColor.GREEN : ChatColor.GOLD) + "Souls Enchants" + (VIEW_SOULS.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
                 List.of(ChatColor.GRAY + "Klicke um Soul Enchants anzuzeigen.")));
         inv.setItem(6, item(Material.DIAMOND,
-                (view == MainView.ESSENCE ? ChatColor.GREEN : ChatColor.AQUA) + "Essence Enchants" + (view == MainView.ESSENCE ? ChatColor.GREEN + " (SELECTED)" : ""),
+                (VIEW_ESSENCE.equals(view) ? ChatColor.GREEN : ChatColor.AQUA) + "Essence Enchants" + (VIEW_ESSENCE.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
                 List.of(ChatColor.GRAY + "Klicke um Essence Enchants anzuzeigen.")));
         inv.setItem(8, item(Material.BOOK, ChatColor.AQUA + "Perks",
                 List.of(ChatColor.GRAY + "Perks act as permanent multipliers", ChatColor.GRAY + "for your sword.", ChatColor.AQUA + "Click to view perks")));
@@ -83,24 +86,22 @@ public class SwordMenuService {
                         ChatColor.GRAY + "XP: " + ChatColor.AQUA + NumberFormat.compact(enchantService.toolXp(player)) + ChatColor.DARK_GRAY + " / " + ChatColor.AQUA + NumberFormat.compact(enchantService.toolXpRequiredNext(player))
                 )));
 
-        if (view == MainView.SKINS) {
+        if (VIEW_SKINS.equals(view)) {
             renderSkins(player, inv, safePage);
         } else {
-            EnchantCategory category = view == MainView.ESSENCE ? EnchantCategory.ESSENCE : EnchantCategory.SOULS;
+            EnchantCategory category = VIEW_ESSENCE.equals(view) ? EnchantCategory.ESSENCE : EnchantCategory.SOULS;
             renderEnchants(player, inv, category, safePage);
         }
 
         fill(inv);
         player.openInventory(inv);
-        contexts.put(player.getUniqueId(), new Context("main", safePage, 0, view.category(), null, view));
+        contexts.put(player.getUniqueId(), new Context("main", safePage, 0, categoryForView(view), null, view));
     }
 
-    private int maxPageForView(MainView view) {
-        int total = switch (view) {
-            case SKINS -> SwordService.MAX_SWORDS;
-            case SOULS -> enchantService.byCategory(EnchantCategory.SOULS).size();
-            case ESSENCE -> enchantService.byCategory(EnchantCategory.ESSENCE).size();
-        };
+    private int maxPageForView(String view) {
+        int total = VIEW_SKINS.equals(view)
+                ? SwordService.MAX_SWORDS
+                : enchantService.byCategory(VIEW_ESSENCE.equals(view) ? EnchantCategory.ESSENCE : EnchantCategory.SOULS).size();
         return Math.max(0, (int) Math.ceil((double) total / GRID_SLOTS.length) - 1);
     }
 
@@ -223,7 +224,7 @@ public class SwordMenuService {
         inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to sword menu")));
         fill(inv);
         player.openInventory(inv);
-        contexts.put(player.getUniqueId(), new Context("perks", 0, 0, EnchantCategory.SOULS, null, MainView.SOULS));
+        contexts.put(player.getUniqueId(), new Context("perks", 0, 0, EnchantCategory.SOULS, null, VIEW_SOULS));
     }
 
     public void openPerkCodex(Player player) {
@@ -257,7 +258,7 @@ public class SwordMenuService {
         inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to perks")));
         fill(inv);
         player.openInventory(inv);
-        contexts.put(player.getUniqueId(), new Context("perk_codex", 0, 0, EnchantCategory.SOULS, null, MainView.SOULS));
+        contexts.put(player.getUniqueId(), new Context("perk_codex", 0, 0, EnchantCategory.SOULS, null, VIEW_SOULS));
     }
 
     public void openUpgrade(Player player, int swordId, int returnPage) {
@@ -288,7 +289,7 @@ public class SwordMenuService {
         inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to skins")));
         fill(inv);
         player.openInventory(inv);
-        contexts.put(player.getUniqueId(), new Context("upgrade", returnPage, swordId, EnchantCategory.SOULS, null, MainView.SKINS));
+        contexts.put(player.getUniqueId(), new Context("upgrade", returnPage, swordId, EnchantCategory.SOULS, null, VIEW_SKINS));
     }
 
     public void openEnchantDetail(Player player, EnchantCategory category, int page, EnchantDefinition def) {
@@ -345,7 +346,7 @@ public class SwordMenuService {
         inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to enchant list")));
         fill(inv);
         player.openInventory(inv);
-        MainView view = category == EnchantCategory.ESSENCE ? MainView.ESSENCE : MainView.SOULS;
+        String view = category == EnchantCategory.ESSENCE ? VIEW_ESSENCE : VIEW_SOULS;
         contexts.put(player.getUniqueId(), new Context("enchant_detail", page, 0, category, def.id(), view));
     }
 
@@ -368,15 +369,15 @@ public class SwordMenuService {
         switch (ctx.menu()) {
             case "main" -> {
                 if (slot == 2) {
-                    openMain(player, MainView.SKINS, 0);
+                    openMain(player, VIEW_SKINS, 0);
                     return true;
                 }
                 if (slot == 4) {
-                    openMain(player, MainView.SOULS, 0);
+                    openMain(player, VIEW_SOULS, 0);
                     return true;
                 }
                 if (slot == 6) {
-                    openMain(player, MainView.ESSENCE, 0);
+                    openMain(player, VIEW_ESSENCE, 0);
                     return true;
                 }
                 if (slot == 48) {
@@ -396,7 +397,7 @@ public class SwordMenuService {
                     return true;
                 }
 
-                if (ctx.view() == MainView.SKINS && slot == 51) {
+                if (VIEW_SKINS.equals(ctx.view()) && slot == 51) {
                     SwordService.BuyBestResult result = swordService.buyBest(player);
                     if (result.upgrades() > 0) {
                         String swordName = swordService.definition(result.swordId()).name();
@@ -405,7 +406,7 @@ public class SwordMenuService {
                         player.sendMessage(ChatColor.RED + "No affordable sword upgrade.");
                     }
                     swordService.ensureSwordInSlot(player);
-                    openMain(player, MainView.SKINS, ctx.page());
+                    openMain(player, VIEW_SKINS, ctx.page());
                     return true;
                 }
 
@@ -414,7 +415,7 @@ public class SwordMenuService {
                     return true;
                 }
 
-                if (ctx.view() == MainView.SKINS) {
+                if (VIEW_SKINS.equals(ctx.view())) {
                     int swordId = index + 1;
                     if (swordId <= SwordService.MAX_SWORDS) {
                         openUpgrade(player, swordId, ctx.page());
@@ -429,7 +430,7 @@ public class SwordMenuService {
             }
             case "upgrade" -> {
                 if (slot == 49) {
-                    openMain(player, MainView.SKINS, ctx.page());
+                    openMain(player, VIEW_SKINS, ctx.page());
                     return true;
                 }
                 int tier = tierFromUpgradeSlot(slot);
@@ -478,7 +479,7 @@ public class SwordMenuService {
             }
             case "perks" -> {
                 if (slot == 49) {
-                    openMain(player, MainView.SOULS, 0);
+                    openMain(player, VIEW_SOULS, 0);
                     return true;
                 }
                 if (slot == 20) {
@@ -604,16 +605,11 @@ public class SwordMenuService {
         return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
-    private enum MainView {
-        SKINS,
-        SOULS,
-        ESSENCE;
 
-        private EnchantCategory category() {
-            return this == ESSENCE ? EnchantCategory.ESSENCE : EnchantCategory.SOULS;
-        }
+    private EnchantCategory categoryForView(String view) {
+        return VIEW_ESSENCE.equals(view) ? EnchantCategory.ESSENCE : EnchantCategory.SOULS;
     }
 
-    private record Context(String menu, int page, int swordId, EnchantCategory category, String enchantId, MainView view) {
+    private record Context(String menu, int page, int swordId, EnchantCategory category, String enchantId, String view) {
     }
 }

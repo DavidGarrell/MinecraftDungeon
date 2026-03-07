@@ -151,6 +151,21 @@ public class DungeonService {
         return zones.values().stream().filter(zone -> zone.area().contains(location)).findFirst();
     }
 
+    public Optional<PlayerZoneContext> currentZoneContext(Player player) {
+        PlayerDungeonSession session = sessions.get(player.getUniqueId());
+        if (session != null && session.zone() != null) {
+            return Optional.of(new PlayerZoneContext(session.zone().id(), session.currentStage()));
+        }
+
+        Optional<ZoneDefinition> zone = zoneAt(player.getLocation());
+        if (zone.isEmpty()) {
+            return Optional.empty();
+        }
+
+        int stage = selectedStage(player, zone.get().id());
+        return Optional.of(new PlayerZoneContext(zone.get().id(), stage));
+    }
+
     public PlayerProfile profile(Player player) {
         return profileService.profile(player.getUniqueId());
     }
@@ -778,6 +793,7 @@ public class DungeonService {
             return new AttackResult(false, false);
         }
     }
+    public record PlayerZoneContext(String zoneId, int stage) {
+    }
 }
-
 
