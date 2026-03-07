@@ -16,6 +16,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.block.Block;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -341,6 +342,36 @@ public class CompanionService {
         return Optional.empty();
     }
 
+    public Optional<EggPoint> eggPointAtBlock(Block block) {
+        if (block == null) {
+            return Optional.empty();
+        }
+        Location blockLocation = block.getLocation();
+        for (Map.Entry<String, Location> entry : eggLocations.entrySet()) {
+            Location configured = entry.getValue();
+            if (configured.getWorld() == null || blockLocation.getWorld() == null) {
+                continue;
+            }
+            if (!configured.getWorld().getUID().equals(blockLocation.getWorld().getUID())) {
+                continue;
+            }
+            if (configured.getBlockX() != blockLocation.getBlockX()
+                    || configured.getBlockY() != blockLocation.getBlockY()
+                    || configured.getBlockZ() != blockLocation.getBlockZ()) {
+                continue;
+            }
+            String[] parts = entry.getKey().split(":");
+            if (parts.length != 2) {
+                continue;
+            }
+            try {
+                return Optional.of(new EggPoint(parts[0], Integer.parseInt(parts[1]), configured.clone()));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return Optional.empty();
+    }
+
     private void loadCompanionConfig() {
         stagePowerFactor = companionConfig.getDouble("stage-power-factor", DEFAULT_STAGE_POWER_FACTOR);
         costStageFactor = companionConfig.getDouble("cost.stage-factor", DEFAULT_COST_STAGE_FACTOR);
@@ -644,6 +675,7 @@ public class CompanionService {
         long price = costPerDraw(stage);
 
         Location blockLocation = baseLocation.clone();
+        clearTeleportedEggs(blockLocation);
         blockLocation.getBlock().setType(Material.DRAGON_EGG, false);
 
         List<UUID> textIds = new ArrayList<>();
@@ -674,6 +706,29 @@ public class CompanionService {
         }
 
         return new EggVisual(baseLocation.clone(), zoneId, stage, List.copyOf(textIds));
+    }
+
+    private void clearTeleportedEggs(Location anchor) {
+        World world = anchor.getWorld();
+        if (world == null) {
+            return;
+        }
+        int baseX = anchor.getBlockX();
+        int baseY = anchor.getBlockY();
+        int baseZ = anchor.getBlockZ();
+        for (int x = baseX - 3; x <= baseX + 3; x++) {
+            for (int y = baseY - 2; y <= baseY + 2; y++) {
+                for (int z = baseZ - 3; z <= baseZ + 3; z++) {
+                    if (x == baseX && y == baseY && z == baseZ) {
+                        continue;
+                    }
+                    Location candidate = new Location(world, x, y, z);
+                    if (candidate.getBlock().getType() == Material.DRAGON_EGG) {
+                        candidate.getBlock().setType(Material.AIR, false);
+                    }
+                }
+            }
+        }
     }
 
     private record EggVisual(Location anchor, String zoneId, int stage, List<UUID> textIds) {
