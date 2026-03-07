@@ -13,9 +13,12 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.math.BigInteger;
 import java.util.*;
 
 public class CompanionMenuService {
+
+    private static final int PAGE_SIZE = 27;
 
     private final CompanionService companionService;
     private final Map<UUID, MenuContext> contexts = new HashMap<>();
@@ -25,6 +28,18 @@ public class CompanionMenuService {
     }
 
     public void openCompanions(Player player) {
+        MenuContext existing = contexts.getOrDefault(player.getUniqueId(), MenuContext.base());
+        openCompanions(player, existing.page(), existing.selectionMode(), existing.selectedIds(), existing.awaitingDeleteConfirm(), existing.awaitingBulkConfirm(), existing.pendingBulkMode(), existing.pendingBulkValue());
+    }
+
+    private void openCompanions(Player player,
+                                int page,
+                                boolean selectionMode,
+                                Set<String> selectedIds,
+                                String awaitingDeleteConfirm,
+                                String awaitingBulkConfirm,
+                                BulkMode pendingBulkMode,
+                                String pendingBulkValue) {
         Inventory inv = Bukkit.createInventory(player, 54, "Companions");
         int maxSlots = companionService.maxEquipSlots(player);
         List<CompanionService.OwnedCompanion> equipped = companionService.equipped(player);
@@ -38,22 +53,76 @@ public class CompanionMenuService {
         }
 
         for (int i = 0; i < equipped.size() && i < 6; i++) {
-            inv.setItem(2 + i, companionHead(equipped.get(i), true));
+            inv.setItem(2 + i, companionHead(equipped.get(i), true, selectedIds.contains(equipped.get(i).id())));
         }
+
+        List<CompanionService.OwnedCompanion> owned = companionService.owned(player);
+        int pages = Math.max(1, (int) Math.ceil((double) owned.size() / PAGE_SIZE));
+        int safePage = Math.max(1, Math.min(page, pages));
+        int from = (safePage - 1) * PAGE_SIZE;
+        int to = Math.min(owned.size(), from + PAGE_SIZE);
 
         int slot = 18;
-        for (CompanionService.OwnedCompanion companion : companionService.owned(player)) {
-            if (slot >= 54) {
-                break;
-            }
-            inv.setItem(slot++, companionHead(companion, false));
+        for (int i = from; i < to; i++) {
+            CompanionService.OwnedCompanion companion = owned.get(i);
+            inv.setItem(slot++, companionHead(companion, false, selectedIds.contains(companion.id())));
         }
 
-        inv.setItem(48, item(Material.DIAMOND, ChatColor.AQUA + "Equip Best", List.of(ChatColor.GREEN + "Click to equip best companions")));
-        inv.setItem(49, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
+        inv.setItem(45, deleteToggleItem(selectionMode, awaitingDeleteConfirm));
+        inv.setItem(46, bulkDeleteItem(awaitingBulkConfirm));
+        inv.setItem(48, item(Material.CLOCK, ChatColor.LIGHT_PURPLE + "Page " + safePage + "/" + pages, List.of(ChatColor.GRAY + "Browse companions")));
+        inv.setItem(50, item(Material.BLAZE_ROD, ChatColor.RED + "Next", List.of(ChatColor.GRAY + "Go to next page")));
+        inv.setItem(52, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
+        inv.setItem(53, item(Material.DIAMOND, ChatColor.AQUA + "Equip Best", List.of(ChatColor.GREEN + "Click to equip best!")));
+
         fill(inv);
         player.openInventory(inv);
-        contexts.put(player.getUniqueId(), new MenuContext("companions", null, 1));
+        contexts.put(player.getUniqueId(), new MenuContext("companions", null, 1, safePage, selectionMode,
+                new HashSet<>(selectedIds), awaitingDeleteConfirm, awaitingBulkConfirm, pendingBulkMode, pendingBulkValue));
+    }
+
+    private void openBulkDeleteMenu(Player player, int page, String awaitingBulkConfirm, BulkMode pendingMode, String pendingValue) {
+        Inventory inv = Bukkit.createInventory(player, 54, "Bulk Delete Companions");
+
+        List<String> options = new ArrayList<>();
+        for (CompanionService.CompanionRarity rarity : CompanionService.CompanionRarity.values()) {
+            options.add("RARITY:" + rarity.name());
+        }
+        Set<String> zones = new TreeSet<>();
+        for (CompanionService.OwnedCompanion companion : companionService.owned(player)) {
+            zones.add(companion.zoneId().toLowerCase(Locale.ROOT));
+        }
+        for (String zone : zones) {
+            options.add("ZONE:" + zone);
+        }
+
+        int pages = Math.max(1, (int) Math.ceil((double) options.size() / PAGE_SIZE));
+        int safePage = Math.max(1, Math.min(page, pages));
+        int from = (safePage - 1) * PAGE_SIZE;
+        int to = Math.min(options.size(), from + PAGE_SIZE);
+
+        int slot = 18;
+        for (int i = from; i < to; i++) {
+            String raw = options.get(i);
+            if (raw.startsWith("RARITY:")) {
+                CompanionService.CompanionRarity rarity = CompanionService.CompanionRarity.valueOf(raw.substring("RARITY:".length()));
+                inv.setItem(slot++, bulkRarityItem(rarity));
+            } else {
+                String zoneId = raw.substring("ZONE:".length());
+                inv.setItem(slot++, bulkZoneItem(zoneId));
+            }
+        }
+
+        inv.setItem(45, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Return to companions")));
+        inv.setItem(48, item(Material.CLOCK, ChatColor.LIGHT_PURPLE + "Page " + safePage + "/" + pages, List.of(ChatColor.GRAY + "Bulk filters")));
+        inv.setItem(50, item(Material.BLAZE_ROD, ChatColor.RED + "Next", List.of(ChatColor.GRAY + "Go to next page")));
+        inv.setItem(52, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
+        inv.setItem(53, bulkDeleteItem(awaitingBulkConfirm));
+
+        fill(inv);
+        player.openInventory(inv);
+        contexts.put(player.getUniqueId(), new MenuContext("bulk-delete", null, 1, safePage, false,
+                new HashSet<>(), null, awaitingBulkConfirm, pendingMode, pendingValue));
     }
 
     public void openEggMenu(Player player, String zoneId, int stage) {
@@ -67,14 +136,14 @@ public class CompanionMenuService {
                         ChatColor.GRAY + "Purchase a Companion that boosts",
                         ChatColor.GRAY + "the amount of money you gain!",
                         " ",
-                        ChatColor.GREEN + "| Price: " + NumberFormat.compact(java.math.BigInteger.valueOf(price)) + " Money",
+                        ChatColor.GREEN + "| Price: " + NumberFormat.compact(BigInteger.valueOf(price)) + " Money",
                         " ",
                         ChatColor.WHITE + "Right Click to view »"
                 )
         ));
 
         int[] previewSlots = new int[]{20, 22, 24, 30, 32};
-        List<CompanionService.CompanionDefinition> previews = companionService.previewCompanions();
+        List<CompanionService.CompanionDefinition> previews = companionService.previewCompanions(zoneId);
         for (int i = 0; i < Math.min(previews.size(), previewSlots.length); i++) {
             inv.setItem(previewSlots[i], companionPreview(previews.get(i), zoneId, stage));
         }
@@ -88,7 +157,7 @@ public class CompanionMenuService {
         inv.setItem(49, item(Material.CHEST, ChatColor.AQUA + "My Companions", List.of(ChatColor.GRAY + "Open companion inventory")));
         fill(inv);
         player.openInventory(inv);
-        contexts.put(player.getUniqueId(), new MenuContext("eggs", zoneId, stage));
+        contexts.put(player.getUniqueId(), new MenuContext("eggs", zoneId, stage, 1, false, new HashSet<>(), null, null, null, null));
     }
 
     public boolean handleClick(InventoryClickEvent event) {
@@ -106,7 +175,7 @@ public class CompanionMenuService {
         }
 
         int slot = event.getSlot();
-        if (ctx.menu.equals("eggs")) {
+        if (ctx.menu().equals("eggs")) {
             int amount = switch (slot) {
                 case 38 -> 1;
                 case 40 -> 3;
@@ -115,7 +184,7 @@ public class CompanionMenuService {
                 default -> 0;
             };
             if (amount > 0) {
-                CompanionService.RollBatchResult result = companionService.roll(player, ctx.zoneId, ctx.stage, amount);
+                CompanionService.RollBatchResult result = companionService.roll(player, ctx.zoneId(), ctx.stage(), amount);
                 if (!result.success()) {
                     player.sendMessage(ChatColor.RED + "Not enough money. Cost: " + result.totalCost());
                 } else {
@@ -125,7 +194,7 @@ public class CompanionMenuService {
                         player.sendMessage(best.rarity().color() + "Best roll: " + best.name() + ChatColor.GRAY + " [" + best.mutation().name() + "] " + ChatColor.GREEN + best.multiplier() + "x");
                     }
                 }
-                openEggMenu(player, ctx.zoneId, ctx.stage);
+                openEggMenu(player, ctx.zoneId(), ctx.stage());
                 return true;
             }
             if (slot == 49) {
@@ -134,25 +203,101 @@ public class CompanionMenuService {
             return true;
         }
 
-        if (ctx.menu.equals("companions")) {
-            if (slot == 49) {
-                player.closeInventory();
-                return true;
-            }
-            if (slot == 48) {
-                companionService.equipBest(player);
-                player.sendMessage(ChatColor.GREEN + "Equipped best companions.");
+        if (ctx.menu().equals("bulk-delete")) {
+            if (slot == 45) {
                 openCompanions(player);
                 return true;
             }
+            if (slot == 50) {
+                openBulkDeleteMenu(player, ctx.page() + 1, null, null, null);
+                return true;
+            }
+            if (slot == 52) {
+                player.closeInventory();
+                return true;
+            }
+            if (slot == 53) {
+                if (ctx.awaitingBulkConfirm() != null && ctx.pendingBulkMode() != null && ctx.pendingBulkValue() != null) {
+                    int deleted = runBulkDelete(player, ctx.pendingBulkMode(), ctx.pendingBulkValue());
+                    player.sendMessage(ChatColor.RED + "Deleted " + deleted + " companions.");
+                    openCompanions(player);
+                } else {
+                    player.sendMessage(ChatColor.YELLOW + "Select a rarity or zone first.");
+                }
+                return true;
+            }
+
             ItemStack clicked = event.getCurrentItem();
             if (clicked == null || !clicked.hasItemMeta()) {
                 return true;
             }
-            String companionId = readCompanionId(clicked);
-            if (companionId != null) {
+            String filter = readBulkFilter(clicked);
+            if (filter == null) {
+                return true;
+            }
+
+            BulkMode mode = filter.startsWith("RARITY:") ? BulkMode.RARITY : BulkMode.ZONE;
+            String value = filter.substring(filter.indexOf(':') + 1);
+            String human = mode == BulkMode.RARITY ? value : capitalize(value);
+            player.sendMessage(ChatColor.YELLOW + "Selected " + human + ". Click Bulk Delete again to confirm.");
+            openBulkDeleteMenu(player, ctx.page(), human, mode, value);
+            return true;
+        }
+
+        if (!ctx.menu().equals("companions")) {
+            return true;
+        }
+
+        if (slot == 52) {
+            player.closeInventory();
+            return true;
+        }
+        if (slot == 53) {
+            companionService.equipBest(player);
+            player.sendMessage(ChatColor.GREEN + "Equipped best companions.");
+            openCompanions(player, ctx.page(), ctx.selectionMode(), ctx.selectedIds(), null, ctx.awaitingBulkConfirm(), ctx.pendingBulkMode(), ctx.pendingBulkValue());
+            return true;
+        }
+        if (slot == 50) {
+            openCompanions(player, ctx.page() + 1, ctx.selectionMode(), ctx.selectedIds(), null, ctx.awaitingBulkConfirm(), ctx.pendingBulkMode(), ctx.pendingBulkValue());
+            return true;
+        }
+        if (slot == 46) {
+            openBulkDeleteMenu(player, 1, null, null, null);
+            return true;
+        }
+        if (slot == 45) {
+            if (ctx.selectionMode()) {
+                if (ctx.awaitingDeleteConfirm() != null) {
+                    int deleted = companionService.deleteCompanions(player, ctx.selectedIds());
+                    player.sendMessage(ChatColor.RED + "Deleted " + deleted + " companions.");
+                    openCompanions(player, 1, false, Set.of(), null, null, null, null);
+                } else {
+                    player.sendMessage(ChatColor.YELLOW + "Click Delete Companions again to confirm.");
+                    openCompanions(player, ctx.page(), true, ctx.selectedIds(), "confirm", ctx.awaitingBulkConfirm(), ctx.pendingBulkMode(), ctx.pendingBulkValue());
+                }
+            } else {
+                player.sendMessage(ChatColor.YELLOW + "Select companions and click again to confirm deletion.");
+                openCompanions(player, ctx.page(), true, new HashSet<>(), null, ctx.awaitingBulkConfirm(), ctx.pendingBulkMode(), ctx.pendingBulkValue());
+            }
+            return true;
+        }
+
+        ItemStack clicked = event.getCurrentItem();
+        if (clicked == null || !clicked.hasItemMeta()) {
+            return true;
+        }
+        String companionId = readCompanionId(clicked);
+        if (companionId != null) {
+            if (ctx.selectionMode()) {
+                Set<String> selected = new HashSet<>(ctx.selectedIds());
+                if (!selected.add(companionId)) {
+                    selected.remove(companionId);
+                }
+                openCompanions(player, ctx.page(), true, selected, null, ctx.awaitingBulkConfirm(), ctx.pendingBulkMode(), ctx.pendingBulkValue());
+            } else {
                 companionService.equip(player, companionId);
-                openCompanions(player);
+                openCompanions(player, ctx.page(), false, Set.of(), null, null, null, null);
             }
         }
 
@@ -163,7 +308,14 @@ public class CompanionMenuService {
         contexts.remove(event.getPlayer().getUniqueId());
     }
 
-    private ItemStack companionHead(CompanionService.OwnedCompanion companion, boolean equipped) {
+    private int runBulkDelete(Player player, BulkMode mode, String value) {
+        if (mode == BulkMode.RARITY) {
+            return companionService.deleteByRarity(player, CompanionService.CompanionRarity.valueOf(value));
+        }
+        return companionService.deleteByZone(player, value);
+    }
+
+    private ItemStack companionHead(CompanionService.OwnedCompanion companion, boolean equipped, boolean selectedForDelete) {
         String texture = switch (companion.rarity()) {
             case COMMON -> "http://textures.minecraft.net/texture/1639c4e0c29260f4e1ef0af5b80f45bf9a572a9ad7d7568f94795f0f6c365a1";
             case RARE -> "http://textures.minecraft.net/texture/f4d8cdbf8776d4f31f0eb55f89ac43189af0f7f24f8206dfa8c32ece2b204361";
@@ -178,7 +330,7 @@ public class CompanionMenuService {
                         ChatColor.GRAY + "Mutation: " + companion.mutation().color() + companion.mutation().name(),
                         ChatColor.GRAY + "Zone Stage: " + ChatColor.YELLOW + companion.zoneId() + " " + companion.stage(),
                         ChatColor.GRAY + "Multiplier: " + ChatColor.GREEN + companion.multiplier() + "x",
-                        equipped ? ChatColor.GREEN + "Equipped" : ChatColor.YELLOW + "Click to equip / unequip"
+                        selectedForDelete ? ChatColor.RED + "Selected for deletion" : (equipped ? ChatColor.GREEN + "Equipped" : ChatColor.YELLOW + "Click to equip / unequip")
                 ));
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
@@ -198,7 +350,7 @@ public class CompanionMenuService {
                         ChatColor.GRAY + "Click to open " + ChatColor.YELLOW + amount + ChatColor.GRAY + " companion(s)",
                         ChatColor.GRAY + "from the dragon egg!",
                         " ",
-                        ChatColor.GRAY + "Cost: " + ChatColor.GREEN + NumberFormat.compact(java.math.BigInteger.valueOf(total)) + " Money",
+                        ChatColor.GRAY + "Cost: " + ChatColor.GREEN + NumberFormat.compact(BigInteger.valueOf(total)) + " Money",
                         " ",
                         ChatColor.LIGHT_PURPLE + "Companions will fall from the sky!"
                 ));
@@ -223,6 +375,76 @@ public class CompanionMenuService {
                         " ",
                         ChatColor.YELLOW + "[Zone " + capitalize(zoneId) + " Stage " + stage + "]"
                 ));
+    }
+
+    private ItemStack deleteToggleItem(boolean enabled, String awaitingConfirm) {
+        if (!enabled) {
+            return item(Material.GLOWSTONE_DUST, ChatColor.GOLD + "Delete Companions", List.of(
+                    ChatColor.GRAY + "Delete multiple companions at once by selecting them",
+                    ChatColor.GRAY + "and clicking the button again to confirm deletion.",
+                    " ",
+                    ChatColor.GREEN + "Click to select companions for deletion!"
+            ));
+        }
+        if (awaitingConfirm != null) {
+            return item(Material.REDSTONE, ChatColor.RED + "Confirm Delete", List.of(
+                    ChatColor.RED + "This action cannot be undone.",
+                    ChatColor.YELLOW + "Click to delete selected companions now."
+            ));
+        }
+        return item(Material.BLAZE_POWDER, ChatColor.YELLOW + "Delete Mode Enabled", List.of(
+                ChatColor.GRAY + "Click companions to select them.",
+                ChatColor.YELLOW + "Then click this button again to confirm."
+        ));
+    }
+
+    private ItemStack bulkDeleteItem(String pendingLabel) {
+        if (pendingLabel == null) {
+            return item(Material.NETHER_STAR, ChatColor.RED + "Bulk Delete", List.of(
+                    ChatColor.GRAY + "Delete all companions with a specific rarity or zone",
+                    ChatColor.GRAY + "in a dedicated filter menu.",
+                    " ",
+                    ChatColor.GREEN + "Click to bulk delete companions!"
+            ));
+        }
+        return item(Material.REDSTONE_BLOCK, ChatColor.DARK_RED + "Confirm Bulk Delete", List.of(
+                ChatColor.GRAY + "Selected filter: " + ChatColor.YELLOW + pendingLabel,
+                ChatColor.RED + "Click to permanently delete companions."
+        ));
+    }
+
+    private ItemStack bulkRarityItem(CompanionService.CompanionRarity rarity) {
+        ItemStack item = item(Material.PAPER, rarity.color() + "Rarity: " + rarity.name(), List.of(
+                ChatColor.GRAY + "Delete all " + rarity.color() + rarity.name() + ChatColor.GRAY + " companions.",
+                ChatColor.YELLOW + "Click to mark for confirm."
+        ));
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(org.bukkit.NamespacedKey.minecraft("bulk_filter"), org.bukkit.persistence.PersistentDataType.STRING, "RARITY:" + rarity.name());
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private ItemStack bulkZoneItem(String zoneId) {
+        ItemStack item = item(Material.MAP, ChatColor.GREEN + "Zone: " + capitalize(zoneId), List.of(
+                ChatColor.GRAY + "Delete all companions from this zone.",
+                ChatColor.YELLOW + "Click to mark for confirm."
+        ));
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(org.bukkit.NamespacedKey.minecraft("bulk_filter"), org.bukkit.persistence.PersistentDataType.STRING, "ZONE:" + zoneId);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private String readBulkFilter(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return null;
+        }
+        return meta.getPersistentDataContainer().get(org.bukkit.NamespacedKey.minecraft("bulk_filter"), org.bukkit.persistence.PersistentDataType.STRING);
     }
 
     private String capitalize(String text) {
@@ -267,6 +489,23 @@ public class CompanionMenuService {
         }
     }
 
-    private record MenuContext(String menu, String zoneId, int stage) {
+    private enum BulkMode {
+        RARITY,
+        ZONE
+    }
+
+    private record MenuContext(String menu,
+                               String zoneId,
+                               int stage,
+                               int page,
+                               boolean selectionMode,
+                               Set<String> selectedIds,
+                               String awaitingDeleteConfirm,
+                               String awaitingBulkConfirm,
+                               BulkMode pendingBulkMode,
+                               String pendingBulkValue) {
+        static MenuContext base() {
+            return new MenuContext("companions", null, 1, 1, false, new HashSet<>(), null, null, null, null);
+        }
     }
 }

@@ -1,4 +1,5 @@
 # Separate companion balancing/config file
+# You can configure a global default pool and override per zone below.
 
 stage-power-factor: 1.85
 
@@ -50,3 +51,87 @@ companions:
     base-multiplier: 0.80
     preview-material: DRAGON_EGG
     preview: false
+
+zones:
+  farm:
+    rarity-chances:
+      COMMON: 620
+      RARE: 230
+      EPIC: 100
+      LEGENDARY: 40
+      MYTHIC: 10
+    companions:
+      wheat_golem:
+        name: "Wheat Golem"
+        rarity: COMMON
+        base-multiplier: 0.06
+        preview-material: HAY_BLOCK
+        preview: true
+      field_boar:
+        name: "Field Boar"
+        rarity: RARE
+        base-multiplier: 0.12
+        preview-material: PIG_SPAWN_EGG
+        preview: true
+      harvest_spirit:
+        name: "Harvest Spirit"
+        rarity: EPIC
+        base-multiplier: 0.24
+        preview-material: JACK_O_LANTERN
+        preview: true
+      barn_guardian:
+        name: "Barn Guardian"
+        rarity: LEGENDARY
+        base-multiplier: 0.45
+        preview-material: IRON_GOLEM_SPAWN_EGG
+        preview: true
+      farm_dragon:
+        name: "Farm Dragon"
+        rarity: MYTHIC
+        base-multiplier: 0.95
+        preview-material: DRAGON_EGG
+        preview: false
+
+  forest:
+    rarity-chances:
+      COMMON: 560
+      RARE: 260
+      EPIC: 120
+      LEGENDARY: 50
+      MYTHIC: 10
+    mutation-chances:
+      NORMAL: 800
+      GOLD: 130
+      RAINBOW: 55
+      DARKMATTER: 15
+    companions:
+      sapling_sprite:
+        name: "Sapling Sprite"
+        rarity: COMMON
+        base-multiplier: 0.08
+        preview-material: OAK_SAPLING
+        preview: true
+      moss_wolf:
+        name: "Moss Wolf"
+        rarity: RARE
+        base-multiplier: 0.16
+        preview-material: WOLF_SPAWN_EGG
+        preview: true
+      grove_keeper:
+        name: "Grove Keeper"
+        rarity: EPIC
+        base-multiplier: 0.30
+        preview-material: MOSS_BLOCK
+        preview: true
+      ancient_ent:
+        name: "Ancient Ent"
+        rarity: LEGENDARY
+        base-multiplier: 0.56
+        preview-material: OAK_LOG
+        preview: true
+      elder_nature_dragon:
+        name: "Elder Nature Dragon"
+        rarity: MYTHIC
+        base-multiplier: 1.10
+        preview-material: DRAGON_EGG
+        preview: false

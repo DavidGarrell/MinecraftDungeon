@@ -49,10 +49,8 @@ public class CompanionService {
     private final NamespacedKey controllerKey;
     private final NamespacedKey eggEntityKey;
     private final Map<String, EggVisual> eggVisuals = new HashMap<>();
-    private final Map<CompanionRarity, List<CompanionDefinition>> companionsByRarity = new EnumMap<>(CompanionRarity.class);
-    private final List<CompanionDefinition> previewCompanions = new ArrayList<>();
-    private List<WeightedRarity> rarityWeights = new ArrayList<>();
-    private List<WeightedMutation> mutationWeights = new ArrayList<>();
+    private CompanionPool defaultPool = CompanionPool.fallback();
+    private final Map<String, CompanionPool> zonePools = new HashMap<>();
     private double stagePowerFactor = DEFAULT_STAGE_POWER_FACTOR;
     private double costStageFactor = DEFAULT_COST_STAGE_FACTOR;
     private double baseCost = DEFAULT_BASE_COST;
@@ -154,8 +152,8 @@ public class CompanionService {
         return Math.max(1L, (long) Math.floor(raw));
     }
 
-    public List<CompanionDefinition> previewCompanions() {
-        return List.copyOf(previewCompanions);
+    public List<CompanionDefinition> previewCompanions(String zoneId) {
+        return pool(zoneId).previewCompanions();
     }
 
     public int maxEquipSlots(Player player) {
@@ -229,6 +227,43 @@ public class CompanionService {
         }
         equipped.put(player.getUniqueId(), ids);
         save();
+    }
+
+    public int deleteCompanions(Player player, Collection<String> companionIds) {
+        if (companionIds == null || companionIds.isEmpty()) {
+            return 0;
+        }
+
+        Set<String> idSet = new HashSet<>(companionIds);
+        List<OwnedCompanion> ownedCompanions = owned(player);
+        int before = ownedCompanions.size();
+        ownedCompanions.removeIf(companion -> idSet.contains(companion.id()));
+
+        List<String> equippedIds = equipped.computeIfAbsent(player.getUniqueId(), ignored -> new ArrayList<>());
+        equippedIds.removeIf(idSet::contains);
+
+        int deleted = before - ownedCompanions.size();
+        if (deleted > 0) {
+            save();
+        }
+        return deleted;
+    }
+
+    public int deleteByRarity(Player player, CompanionRarity rarity) {
+        List<String> ids = owned(player).stream()
+                .filter(companion -> companion.rarity() == rarity)
+                .map(OwnedCompanion::id)
+                .toList();
+        return deleteCompanions(player, ids);
+    }
+
+    public int deleteByZone(Player player, String zoneId) {
+        String normalized = zoneId == null ? "" : zoneId.toLowerCase(Locale.ROOT);
+        List<String> ids = owned(player).stream()
+                .filter(companion -> companion.zoneId().equalsIgnoreCase(normalized))
+                .map(OwnedCompanion::id)
+                .toList();
+        return deleteCompanions(player, ids);
     }
 
     public Optional<Location> eggLocation(String zoneId, int stage) {
@@ -311,48 +346,92 @@ public class CompanionService {
         costStageFactor = companionConfig.getDouble("cost.stage-factor", DEFAULT_COST_STAGE_FACTOR);
         baseCost = companionConfig.getDouble("cost.base", DEFAULT_BASE_COST);
 
-        rarityWeights = loadRarityWeights(companionConfig.getConfigurationSection("rarity-chances"));
-        mutationWeights = loadMutationWeights(companionConfig.getConfigurationSection("mutation-chances"));
+        defaultPool = readPool(companionConfig, null);
+        zonePools.clear();
 
-        companionsByRarity.clear();
-        for (CompanionRarity rarity : CompanionRarity.values()) {
-            companionsByRarity.put(rarity, new ArrayList<>());
+        ConfigurationSection zonesSection = companionConfig.getConfigurationSection("zones");
+        if (zonesSection == null) {
+            return;
         }
 
-        previewCompanions.clear();
-        ConfigurationSection companionsSection = companionConfig.getConfigurationSection("companions");
-        if (companionsSection != null) {
+        for (String zoneId : zonesSection.getKeys(false)) {
+            ConfigurationSection zoneSection = zonesSection.getConfigurationSection(zoneId);
+            if (zoneSection == null) {
+                continue;
+            }
+            zonePools.put(zoneId.toLowerCase(Locale.ROOT), readPool(zoneSection, defaultPool));
+        }
+    }
+
+    private CompanionPool readPool(ConfigurationSection section, CompanionPool fallback) {
+        List<WeightedRarity> rarities = section.contains("rarity-chances")
+                ? loadRarityWeights(section.getConfigurationSection("rarity-chances"))
+                : (fallback == null ? loadRarityWeights(null) : fallback.rarityWeights());
+        List<WeightedMutation> mutations = section.contains("mutation-chances")
+                ? loadMutationWeights(section.getConfigurationSection("mutation-chances"))
+                : (fallback == null ? loadMutationWeights(null) : fallback.mutationWeights());
+
+        Map<CompanionRarity, List<CompanionDefinition>> definitions = new EnumMap<>(CompanionRarity.class);
+        for (CompanionRarity rarity : CompanionRarity.values()) {
+            definitions.put(rarity, new ArrayList<>());
+        }
+
+        List<CompanionDefinition> previews = new ArrayList<>();
+        ConfigurationSection companionsSection = section.getConfigurationSection("companions");
+        if (companionsSection != null && !companionsSection.getKeys(false).isEmpty()) {
             for (String key : companionsSection.getKeys(false)) {
                 String base = "companions." + key;
-                CompanionRarity rarity;
-                try {
-                    rarity = CompanionRarity.valueOf(companionConfig.getString(base + ".rarity", "COMMON").toUpperCase(Locale.ROOT));
-                } catch (Exception exception) {
-                    rarity = CompanionRarity.COMMON;
-                }
-
-                String name = companionConfig.getString(base + ".name", key + " Companion");
-                double baseMultiplier = companionConfig.getDouble(base + ".base-multiplier", rarity.defaultBaseMultiplier());
-                Material previewMaterial = parseMaterial(companionConfig.getString(base + ".preview-material"), Material.DRAGON_EGG);
+                CompanionRarity rarity = parseRarity(section.getString(base + ".rarity", "COMMON"));
+                String name = section.getString(base + ".name", key + " Companion");
+                double baseMultiplier = section.getDouble(base + ".base-multiplier", rarity.defaultBaseMultiplier());
+                Material previewMaterial = parseMaterial(section.getString(base + ".preview-material"), Material.DRAGON_EGG);
                 CompanionDefinition definition = new CompanionDefinition(key.toLowerCase(Locale.ROOT), name, rarity, baseMultiplier, previewMaterial);
-
-                companionsByRarity.get(rarity).add(definition);
-                if (companionConfig.getBoolean(base + ".preview", true)) {
-                    previewCompanions.add(definition);
+                definitions.get(rarity).add(definition);
+                if (section.getBoolean(base + ".preview", true)) {
+                    previews.add(definition);
                 }
             }
+        } else if (fallback != null) {
+            for (CompanionRarity rarity : CompanionRarity.values()) {
+                definitions.get(rarity).addAll(fallback.companionsByRarity().getOrDefault(rarity, List.of()));
+            }
+            previews.addAll(fallback.previewCompanions());
         }
 
-        if (previewCompanions.isEmpty()) {
+        if (previews.isEmpty()) {
             for (CompanionRarity rarity : CompanionRarity.values()) {
-                previewCompanions.add(defaultDefinition(rarity));
+                previews.add(defaultDefinition(rarity));
             }
         }
 
         for (CompanionRarity rarity : CompanionRarity.values()) {
-            if (companionsByRarity.getOrDefault(rarity, List.of()).isEmpty()) {
-                companionsByRarity.get(rarity).add(defaultDefinition(rarity));
+            if (definitions.get(rarity).isEmpty()) {
+                if (fallback != null && !fallback.companionsByRarity().getOrDefault(rarity, List.of()).isEmpty()) {
+                    definitions.get(rarity).addAll(fallback.companionsByRarity().get(rarity));
+                } else {
+                    definitions.get(rarity).add(defaultDefinition(rarity));
+                }
             }
+        }
+
+        return new CompanionPool(
+                List.copyOf(rarities),
+                List.copyOf(mutations),
+                definitions.entrySet().stream().collect(java.util.stream.Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> List.copyOf(entry.getValue()),
+                        (a, b) -> b,
+                        () -> new EnumMap<>(CompanionRarity.class)
+                )),
+                List.copyOf(previews)
+        );
+    }
+
+    private CompanionRarity parseRarity(String raw) {
+        try {
+            return CompanionRarity.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (Exception ignored) {
+            return CompanionRarity.COMMON;
         }
     }
 
@@ -407,10 +486,21 @@ public class CompanionService {
         return parsed == null ? fallback : parsed;
     }
 
+    private static CompanionDefinition defaultDefinitionStatic(CompanionRarity rarity) {
+        return switch (rarity) {
+            case COMMON -> new CompanionDefinition("chicken", "Chicken Companion", rarity, rarity.defaultBaseMultiplier(), Material.CHICKEN_SPAWN_EGG);
+            case RARE -> new CompanionDefinition("pig", "Pig Companion", rarity, rarity.defaultBaseMultiplier(), Material.PIG_SPAWN_EGG);
+            case EPIC -> new CompanionDefinition("cow", "Cow Companion", rarity, rarity.defaultBaseMultiplier(), Material.COW_SPAWN_EGG);
+            case LEGENDARY -> new CompanionDefinition("wolf", "Wolf Companion", rarity, rarity.defaultBaseMultiplier(), Material.WOLF_SPAWN_EGG);
+            case MYTHIC -> new CompanionDefinition("dragon", "Dragon Companion", rarity, rarity.defaultBaseMultiplier(), Material.DRAGON_EGG);
+        };
+    }
+
     private OwnedCompanion createCompanion(String zoneId, int stage) {
-        CompanionRarity rarity = rollRarity();
-        Mutation mutation = rollMutation();
-        CompanionDefinition definition = randomDefinition(rarity);
+        CompanionPool pool = pool(zoneId);
+        CompanionRarity rarity = rollRarity(pool.rarityWeights());
+        Mutation mutation = rollMutation(pool.mutationWeights());
+        CompanionDefinition definition = randomDefinition(pool.companionsByRarity(), rarity);
 
         double stageFactor = Math.pow(stagePowerFactor, Math.max(0, stage - 1));
         double multiplier = BigDecimal.valueOf(definition.baseMultiplier() * stageFactor * mutation.multiplier())
@@ -419,54 +509,55 @@ public class CompanionService {
         return new OwnedCompanion(UUID.randomUUID().toString(), zoneId.toLowerCase(Locale.ROOT), stage, definition.name(), rarity, mutation, multiplier);
     }
 
-    private CompanionDefinition randomDefinition(CompanionRarity rarity) {
-        List<CompanionDefinition> list = companionsByRarity.getOrDefault(rarity, List.of());
+    private CompanionDefinition randomDefinition(Map<CompanionRarity, List<CompanionDefinition>> companionPools, CompanionRarity rarity) {
+        List<CompanionDefinition> list = companionPools.getOrDefault(rarity, List.of());
         if (list.isEmpty()) {
             return defaultDefinition(rarity);
         }
         return list.get(ThreadLocalRandom.current().nextInt(list.size()));
     }
 
-    private CompanionRarity rollRarity() {
-        double total = rarityWeights.stream().mapToDouble(WeightedRarity::weight).sum();
+    private CompanionRarity rollRarity(List<WeightedRarity> configuredWeights) {
+        double total = configuredWeights.stream().mapToDouble(WeightedRarity::weight).sum();
         if (total <= 0) {
             return CompanionRarity.COMMON;
         }
         double roll = ThreadLocalRandom.current().nextDouble(total);
         double cursor = 0.0D;
-        for (WeightedRarity weight : rarityWeights) {
+        for (WeightedRarity weight : configuredWeights) {
             cursor += weight.weight();
             if (roll <= cursor) {
                 return weight.rarity();
             }
         }
-        return rarityWeights.getLast().rarity();
+        return configuredWeights.getLast().rarity();
     }
 
-    private Mutation rollMutation() {
-        double total = mutationWeights.stream().mapToDouble(WeightedMutation::weight).sum();
+    private Mutation rollMutation(List<WeightedMutation> configuredWeights) {
+        double total = configuredWeights.stream().mapToDouble(WeightedMutation::weight).sum();
         if (total <= 0) {
             return Mutation.NORMAL;
         }
         double roll = ThreadLocalRandom.current().nextDouble(total);
         double cursor = 0.0D;
-        for (WeightedMutation weight : mutationWeights) {
+        for (WeightedMutation weight : configuredWeights) {
             cursor += weight.weight();
             if (roll <= cursor) {
                 return weight.mutation();
             }
         }
-        return mutationWeights.getLast().mutation();
+        return configuredWeights.getLast().mutation();
+    }
+
+    private CompanionPool pool(String zoneId) {
+        if (zoneId == null) {
+            return defaultPool;
+        }
+        return zonePools.getOrDefault(zoneId.toLowerCase(Locale.ROOT), defaultPool);
     }
 
     private CompanionDefinition defaultDefinition(CompanionRarity rarity) {
-        return switch (rarity) {
-            case COMMON -> new CompanionDefinition("chicken", "Chicken Companion", rarity, rarity.defaultBaseMultiplier(), Material.CHICKEN_SPAWN_EGG);
-            case RARE -> new CompanionDefinition("pig", "Pig Companion", rarity, rarity.defaultBaseMultiplier(), Material.PIG_SPAWN_EGG);
-            case EPIC -> new CompanionDefinition("cow", "Cow Companion", rarity, rarity.defaultBaseMultiplier(), Material.COW_SPAWN_EGG);
-            case LEGENDARY -> new CompanionDefinition("wolf", "Wolf Companion", rarity, rarity.defaultBaseMultiplier(), Material.WOLF_SPAWN_EGG);
-            case MYTHIC -> new CompanionDefinition("dragon", "Dragon Companion", rarity, rarity.defaultBaseMultiplier(), Material.DRAGON_EGG);
-        };
+        return defaultDefinitionStatic(rarity);
     }
 
     private void load() {
@@ -552,44 +643,42 @@ public class CompanionService {
         int stage = parts.length > 1 ? Integer.parseInt(parts[1]) : 1;
         long price = costPerDraw(stage);
 
-        Location eggLocation = baseLocation.clone().add(0.5D, 0.1D, 0.5D);
-        ArmorStand egg = world.spawn(eggLocation, ArmorStand.class, stand -> {
-            stand.setInvisible(true);
-            stand.setInvulnerable(true);
-            stand.setPersistent(false);
-            stand.setGravity(false);
-            stand.setBasePlate(false);
-            stand.setArms(false);
-            stand.setSmall(true);
-            stand.setCustomNameVisible(false);
-            stand.getEquipment().setHelmet(new ItemStack(Material.DRAGON_EGG));
-            stand.getPersistentDataContainer().set(eggEntityKey, PersistentDataType.STRING, key);
-        });
+        Location blockLocation = baseLocation.clone();
+        blockLocation.getBlock().setType(Material.DRAGON_EGG, false);
 
-        ArmorStand text = world.spawn(baseLocation.clone().add(0.5D, 2.1D, 0.5D), ArmorStand.class, stand -> {
-            stand.setInvisible(true);
-            stand.setInvulnerable(true);
-            stand.setPersistent(false);
-            stand.setGravity(false);
-            stand.setMarker(true);
-            stand.setSmall(true);
-            stand.setCustomNameVisible(true);
-            stand.setCustomName(
-                    ChatColor.GREEN + "Zone Egg\n" +
-                            ChatColor.GRAY + "Purchase a Companion that boosts\n" +
-                            ChatColor.GRAY + "the amount of money you gain!\n" +
-                            ChatColor.GREEN + "| Price: " + price + " Money\n" +
-                            ChatColor.WHITE + "Right Click to view »"
-            );
-            stand.getPersistentDataContainer().set(eggEntityKey, PersistentDataType.STRING, key);
-        });
+        List<UUID> textIds = new ArrayList<>();
+        List<String> lines = List.of(
+                ChatColor.GREEN + "Zone Egg",
+                ChatColor.GRAY + "Purchase a Companion that boosts",
+                ChatColor.GRAY + "the amount of money you gain!",
+                ChatColor.GREEN + "| Price: " + price + " Money",
+                ChatColor.WHITE + "« Right Click to view »"
+        );
 
-        return new EggVisual(baseLocation.clone(), zoneId, stage, egg.getUniqueId(), text.getUniqueId());
+        double startY = 2.95D;
+        for (int i = 0; i < lines.size(); i++) {
+            int index = i;
+            double y = startY - (index * 0.27D);
+            ArmorStand textLine = world.spawn(baseLocation.clone().add(0.5D, y, 0.5D), ArmorStand.class, stand -> {
+                stand.setInvisible(true);
+                stand.setInvulnerable(true);
+                stand.setPersistent(false);
+                stand.setGravity(false);
+                stand.setMarker(true);
+                stand.setSmall(true);
+                stand.setCustomNameVisible(true);
+                stand.setCustomName(lines.get(index));
+                stand.getPersistentDataContainer().set(eggEntityKey, PersistentDataType.STRING, key);
+            });
+            textIds.add(textLine.getUniqueId());
+        }
+
+        return new EggVisual(baseLocation.clone(), zoneId, stage, List.copyOf(textIds));
     }
 
-    private record EggVisual(Location anchor, String zoneId, int stage, UUID eggId, UUID textId) {
+    private record EggVisual(Location anchor, String zoneId, int stage, List<UUID> textIds) {
         static EggVisual empty(Location location) {
-            return new EggVisual(location.clone(), "unknown", 1, null, null);
+            return new EggVisual(location.clone(), "unknown", 1, List.of());
         }
 
         boolean isAt(Location location) {
@@ -600,8 +689,15 @@ public class CompanionService {
         }
 
         void remove() {
-            removeEntity(eggId, anchor);
-            removeEntity(textId, anchor);
+            for (UUID textId : textIds) {
+                removeEntity(textId, anchor);
+            }
+            if (anchor.getWorld() != null) {
+                Location block = anchor.clone();
+                if (block.getBlock().getType() == Material.DRAGON_EGG) {
+                    block.getBlock().setType(Material.AIR, false);
+                }
+            }
         }
 
         private static void removeEntity(UUID id, Location anchor) {
@@ -619,6 +715,38 @@ public class CompanionService {
     }
 
     private record WeightedMutation(Mutation mutation, double weight) {
+    }
+
+    private record CompanionPool(List<WeightedRarity> rarityWeights,
+                                 List<WeightedMutation> mutationWeights,
+                                 Map<CompanionRarity, List<CompanionDefinition>> companionsByRarity,
+                                 List<CompanionDefinition> previewCompanions) {
+        static CompanionPool fallback() {
+            EnumMap<CompanionRarity, List<CompanionDefinition>> byRarity = new EnumMap<>(CompanionRarity.class);
+            List<CompanionDefinition> previews = new ArrayList<>();
+            for (CompanionRarity rarity : CompanionRarity.values()) {
+                CompanionDefinition definition = defaultDefinitionStatic(rarity);
+                byRarity.put(rarity, List.of(definition));
+                previews.add(definition);
+            }
+            return new CompanionPool(
+                    List.of(
+                            new WeightedRarity(CompanionRarity.COMMON, 600),
+                            new WeightedRarity(CompanionRarity.RARE, 250),
+                            new WeightedRarity(CompanionRarity.EPIC, 100),
+                            new WeightedRarity(CompanionRarity.LEGENDARY, 40),
+                            new WeightedRarity(CompanionRarity.MYTHIC, 10)
+                    ),
+                    List.of(
+                            new WeightedMutation(Mutation.NORMAL, 850),
+                            new WeightedMutation(Mutation.GOLD, 100),
+                            new WeightedMutation(Mutation.RAINBOW, 40),
+                            new WeightedMutation(Mutation.DARKMATTER, 10)
+                    ),
+                    byRarity,
+                    List.copyOf(previews)
+            );
+        }
     }
 
     public record CompanionDefinition(String id, String name, CompanionRarity rarity, double baseMultiplier, Material previewMaterial) {
