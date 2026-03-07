@@ -1,6 +1,7 @@
 package de.fleaqx.minecraftDungeons.companion.ui;
 
 import de.fleaqx.minecraftDungeons.companion.CompanionService;
+import de.fleaqx.minecraftDungeons.currency.NumberFormat;
 import de.fleaqx.minecraftDungeons.ui.HeadItemFactory;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -56,25 +57,35 @@ public class CompanionMenuService {
     }
 
     public void openEggMenu(Player player, String zoneId, int stage) {
-        Inventory inv = Bukkit.createInventory(player, 27, "Companion Eggs");
+        Inventory inv = Bukkit.createInventory(player, 54, "Companion Eggs");
 
         long price = companionService.costPerDraw(stage);
-        inv.setItem(4, HeadItemFactory.head(
+        inv.setItem(13, HeadItemFactory.head(
                 "http://textures.minecraft.net/texture/b23c6f17cb43cc6c5cfcc8ef3f7480fcead0b5e1c574b95f2c98b5eb2d646e47",
                 ChatColor.GREEN + "Zone Egg",
                 List.of(
-                        ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + zoneId,
-                        ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
-                        ChatColor.GRAY + "Price per draw: " + ChatColor.GREEN + price + " Money"
+                        ChatColor.GRAY + "Purchase a Companion that boosts",
+                        ChatColor.GRAY + "the amount of money you gain!",
+                        " ",
+                        ChatColor.GREEN + "| Price: " + NumberFormat.compact(java.math.BigInteger.valueOf(price)) + " Money",
+                        " ",
+                        ChatColor.WHITE + "Right Click to view »"
                 )
         ));
 
-        inv.setItem(10, rollItem(1, price));
-        inv.setItem(12, rollItem(3, price));
-        inv.setItem(14, rollItem(10, price));
-        inv.setItem(16, rollItem(64, price));
-        inv.setItem(22, item(Material.CHEST, ChatColor.AQUA + "My Companions", List.of(ChatColor.GRAY + "Open companion inventory")));
+        int[] previewSlots = new int[]{20, 22, 24, 30, 32};
+        List<CompanionService.CompanionDefinition> previews = companionService.previewCompanions();
+        for (int i = 0; i < Math.min(previews.size(), previewSlots.length); i++) {
+            inv.setItem(previewSlots[i], companionPreview(previews.get(i), zoneId, stage));
+        }
 
+        inv.setItem(36, toggleAnimationsItem());
+        inv.setItem(38, rollItem(1, price));
+        inv.setItem(40, rollItem(3, price));
+        inv.setItem(42, rollItem(10, price));
+        inv.setItem(44, rollItem(64, price));
+
+        inv.setItem(49, item(Material.CHEST, ChatColor.AQUA + "My Companions", List.of(ChatColor.GRAY + "Open companion inventory")));
         fill(inv);
         player.openInventory(inv);
         contexts.put(player.getUniqueId(), new MenuContext("eggs", zoneId, stage));
@@ -97,10 +108,10 @@ public class CompanionMenuService {
         int slot = event.getSlot();
         if (ctx.menu.equals("eggs")) {
             int amount = switch (slot) {
-                case 10 -> 1;
-                case 12 -> 3;
-                case 14 -> 10;
-                case 16 -> 64;
+                case 38 -> 1;
+                case 40 -> 3;
+                case 42 -> 10;
+                case 44 -> 64;
                 default -> 0;
             };
             if (amount > 0) {
@@ -117,7 +128,7 @@ public class CompanionMenuService {
                 openEggMenu(player, ctx.zoneId, ctx.stage);
                 return true;
             }
-            if (slot == 22) {
+            if (slot == 49) {
                 openCompanions(player);
             }
             return true;
@@ -181,8 +192,45 @@ public class CompanionMenuService {
 
     private ItemStack rollItem(int amount, long pricePerDraw) {
         long total = pricePerDraw * amount;
-        return item(Material.INK_SAC, ChatColor.GREEN + "Open " + amount + "x",
-                List.of(ChatColor.GRAY + "Cost: " + ChatColor.GOLD + total + " Money", ChatColor.YELLOW + "Click to draw"));
+        return item(Material.BLACK_DYE, ChatColor.LIGHT_PURPLE + "Open " + amount + " Companions",
+                List.of(
+                        " ",
+                        ChatColor.GRAY + "Click to open " + ChatColor.YELLOW + amount + ChatColor.GRAY + " companion(s)",
+                        ChatColor.GRAY + "from the dragon egg!",
+                        " ",
+                        ChatColor.GRAY + "Cost: " + ChatColor.GREEN + NumberFormat.compact(java.math.BigInteger.valueOf(total)) + " Money",
+                        " ",
+                        ChatColor.LIGHT_PURPLE + "Companions will fall from the sky!"
+                ));
+    }
+
+    private ItemStack toggleAnimationsItem() {
+        return item(Material.BLAZE_ROD, ChatColor.GREEN + "Toggle Animations",
+                List.of(
+                        ChatColor.GRAY + "Toggle whether or not to play an animation",
+                        ChatColor.GRAY + "when opening companion eggs.",
+                        " ",
+                        ChatColor.GREEN + "Click to toggle animations!"
+                ));
+    }
+
+    private ItemStack companionPreview(CompanionService.CompanionDefinition definition, String zoneId, int stage) {
+        String rarity = definition.rarity().color() + capitalize(definition.rarity().name());
+        return item(definition.previewMaterial(), definition.rarity().color() + definition.name(),
+                List.of(
+                        ChatColor.GRAY + "Rarity: " + rarity,
+                        ChatColor.GRAY + "Multiplier: " + ChatColor.GREEN + String.format(Locale.US, "%.3fx", definition.baseMultiplier()),
+                        " ",
+                        ChatColor.YELLOW + "[Zone " + capitalize(zoneId) + " Stage " + stage + "]"
+                ));
+    }
+
+    private String capitalize(String text) {
+        if (text == null || text.isBlank()) {
+            return "Unknown";
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
     }
 
     private String readCompanionId(ItemStack item) {

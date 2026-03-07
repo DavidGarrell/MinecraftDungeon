@@ -116,6 +116,7 @@ public final class MinecraftDungeons extends JavaPlugin {
             autoAttackService.shutdown();
         }
         if (companionService != null) {
+            companionService.shutdown();
             companionService.save();
         }
         if (dungeonService != null) {

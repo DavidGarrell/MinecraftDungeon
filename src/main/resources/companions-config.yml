@@ -1,0 +1,52 @@
+# Separate companion balancing/config file
+
+stage-power-factor: 1.85
+
+cost:
+  base: 800
+  stage-factor: 47.25
+
+rarity-chances:
+  COMMON: 600
+  RARE: 250
+  EPIC: 100
+  LEGENDARY: 40
+  MYTHIC: 10
+
+mutation-chances:
+  NORMAL: 850
+  GOLD: 100
+  RAINBOW: 40
+  DARKMATTER: 10
+
+companions:
+  chicken:
+    name: "Chicken Companion"
+    rarity: COMMON
+    base-multiplier: 0.05
+    preview-material: CHICKEN_SPAWN_EGG
+    preview: true
+  pig:
+    name: "Pig Companion"
+    rarity: RARE
+    base-multiplier: 0.075
+    preview-material: PIG_SPAWN_EGG
+    preview: true
+  cow:
+    name: "Cow Companion"
+    rarity: EPIC
+    base-multiplier: 0.10
+    preview-material: COW_SPAWN_EGG
+    preview: true
+  wolf:
+    name: "Wolf Companion"
+    rarity: LEGENDARY
+    base-multiplier: 0.20
+    preview-material: WOLF_SPAWN_EGG
+    preview: true
+  dragon:
+    name: "Dragon Companion"
+    rarity: MYTHIC
+    base-multiplier: 0.80
+    preview-material: DRAGON_EGG
+    preview: false
