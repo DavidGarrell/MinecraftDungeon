@@ -8,7 +8,7 @@ import de.fleaqx.minecraftDungeons.sword.SwordDefinition;
 import de.fleaqx.minecraftDungeons.sword.SwordService;
 import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import de.fleaqx.minecraftDungeons.ui.HeadItemFactory;
-import org.bukkit.Bukkit;
+import de.fleaqx.minecraftDungeons.ui.UiMenuUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -55,32 +55,32 @@ public class SwordMenuService {
     }
 
     private void openMain(Player player, String view, int page) {
-        Inventory inv = Bukkit.createInventory(player, 54, "Sword Enchants");
+        Inventory inv = UiMenuUtils.createMenu(player, 54, "Sword Enchants");
 
         int maxPage = maxPageForView(view);
         int safePage = Math.max(0, Math.min(page, maxPage));
 
-        inv.setItem(2, item(Material.NETHER_STAR,
+        inv.setItem(2, UiMenuUtils.item(Material.NETHER_STAR,
                 (VIEW_SKINS.equals(view) ? ChatColor.GREEN : ChatColor.LIGHT_PURPLE) + "Skins" + (VIEW_SKINS.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
                 List.of(ChatColor.GRAY + "Klicke um Skins anzuzeigen.")));
-        inv.setItem(4, item(Material.BLAZE_POWDER,
+        inv.setItem(4, UiMenuUtils.item(Material.BLAZE_POWDER,
                 (VIEW_SOULS.equals(view) ? ChatColor.GREEN : ChatColor.GOLD) + "Souls Enchants" + (VIEW_SOULS.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
                 List.of(ChatColor.GRAY + "Klicke um Soul Enchants anzuzeigen.")));
-        inv.setItem(6, item(Material.DIAMOND,
+        inv.setItem(6, UiMenuUtils.item(Material.DIAMOND,
                 (VIEW_ESSENCE.equals(view) ? ChatColor.GREEN : ChatColor.AQUA) + "Essence Enchants" + (VIEW_ESSENCE.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
                 List.of(ChatColor.GRAY + "Klicke um Essence Enchants anzuzeigen.")));
-        inv.setItem(8, item(Material.BOOK, ChatColor.AQUA + "Perks",
+        inv.setItem(8, UiMenuUtils.item(Material.BOOK, ChatColor.AQUA + "Perks",
                 List.of(ChatColor.GRAY + "Perks act as permanent multipliers", ChatColor.GRAY + "for your sword.", ChatColor.AQUA + "Click to view perks")));
 
-        inv.setItem(49, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close this menu.")));
+        inv.setItem(49, UiMenuUtils.item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close this menu.")));
         if (safePage > 0) {
-            inv.setItem(48, item(Material.ARROW, ChatColor.YELLOW + "Previous Page", List.of(ChatColor.GRAY + "Go to page " + safePage)));
+            inv.setItem(48, UiMenuUtils.item(Material.ARROW, ChatColor.YELLOW + "Previous Page", List.of(ChatColor.GRAY + "Go to page " + safePage)));
         }
         if (safePage < maxPage) {
-            inv.setItem(50, item(Material.ARROW, ChatColor.YELLOW + "Next Page", List.of(ChatColor.GRAY + "Go to page " + (safePage + 2))));
+            inv.setItem(50, UiMenuUtils.item(Material.ARROW, ChatColor.YELLOW + "Next Page", List.of(ChatColor.GRAY + "Go to page " + (safePage + 2))));
         }
 
-        inv.setItem(53, item(Material.ANVIL, ChatColor.YELLOW + "Tool Level",
+        inv.setItem(53, UiMenuUtils.item(Material.ANVIL, ChatColor.YELLOW + "Tool Level",
                 List.of(
                         ChatColor.GRAY + "Level: " + ChatColor.GREEN + enchantService.toolLevel(player),
                         ChatColor.GRAY + "XP: " + ChatColor.AQUA + NumberFormat.compact(enchantService.toolXp(player)) + ChatColor.DARK_GRAY + " / " + ChatColor.AQUA + NumberFormat.compact(enchantService.toolXpRequiredNext(player))
@@ -93,7 +93,7 @@ public class SwordMenuService {
             renderEnchants(player, inv, category, safePage);
         }
 
-        fill(inv);
+        UiMenuUtils.fillEmptySlots(inv);
         player.openInventory(inv);
         contexts.put(player.getUniqueId(), new Context("main", safePage, 0, categoryForView(view), null, view));
     }
@@ -129,7 +129,7 @@ public class SwordMenuService {
             inv.setItem(GRID_SLOTS[i], item);
         }
 
-        inv.setItem(51, item(Material.NETHER_STAR, ChatColor.GOLD + "Best Sword",
+        inv.setItem(51, UiMenuUtils.item(Material.NETHER_STAR, ChatColor.GOLD + "Best Sword",
                 List.of(ChatColor.GRAY + "Buys best affordable sword upgrades.", ChatColor.YELLOW + "Click to buy.")));
     }
 
@@ -167,7 +167,7 @@ public class SwordMenuService {
     }
 
     public void openPerks(Player player) {
-        Inventory inv = Bukkit.createInventory(player, 54, "Sword Perks");
+        Inventory inv = UiMenuUtils.createMenu(player, 54, "Sword Perks");
 
         inv.setItem(0, HeadItemFactory.head("http://textures.minecraft.net/texture/3772db39ccf2a33f71f71a889f06e1492122ab0e8625995fe9ad49fdb02f4f24", ChatColor.GREEN + "Roll Sword Perk", List.of(
                 ChatColor.GRAY + "Cost: " + ChatColor.RED + "1 Perk Point",
@@ -175,7 +175,7 @@ public class SwordMenuService {
                 ChatColor.GREEN + "Click to roll"
         )));
 
-        inv.setItem(4, item(Material.ENCHANTED_BOOK, ChatColor.AQUA + "Perk Pity", List.of(
+        inv.setItem(4, UiMenuUtils.item(Material.ENCHANTED_BOOK, ChatColor.AQUA + "Perk Pity", List.of(
                 ChatColor.GRAY + "After " + swordPerkService.pityRolls() + " rolls, next roll is",
                 ChatColor.GOLD + "Legendary or higher",
                 " ",
@@ -186,7 +186,7 @@ public class SwordMenuService {
                 ChatColor.DARK_AQUA + "Rolls until Pity+: " + ChatColor.WHITE + swordPerkService.rollsUntilPityPlus(player)
         )));
 
-        inv.setItem(8, item(Material.DIAMOND, ChatColor.AQUA + "Perk Points", List.of(
+        inv.setItem(8, UiMenuUtils.item(Material.DIAMOND, ChatColor.AQUA + "Perk Points", List.of(
                 ChatColor.GRAY + "Current points: " + ChatColor.GREEN + swordPerkService.perkPoints(player),
                 ChatColor.GRAY + "Current rolls: " + ChatColor.YELLOW + swordPerkService.perkRolls(player)
         )));
@@ -215,20 +215,20 @@ public class SwordMenuService {
         List<SwordPerkService.ShopOffer> offers = swordPerkService.shopOffers();
         for (int i = 0; i < Math.min(offerSlots.length, offers.size()); i++) {
             SwordPerkService.ShopOffer offer = offers.get(i);
-            inv.setItem(offerSlots[i], item(Material.GOLD_BLOCK, ChatColor.YELLOW + "Buy " + offer.points() + " Perk Points", List.of(
+            inv.setItem(offerSlots[i], UiMenuUtils.item(Material.GOLD_BLOCK, ChatColor.YELLOW + "Buy " + offer.points() + " Perk Points", List.of(
                     ChatColor.GRAY + "Price: " + ChatColor.GOLD + offer.cost() + " Shards",
                     ChatColor.GREEN + "Click to purchase"
             )));
         }
 
-        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to sword menu")));
-        fill(inv);
+        inv.setItem(49, UiMenuUtils.item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to sword menu")));
+        UiMenuUtils.fillEmptySlots(inv);
         player.openInventory(inv);
         contexts.put(player.getUniqueId(), new Context("perks", 0, 0, EnchantCategory.SOULS, null, VIEW_SOULS));
     }
 
     public void openPerkCodex(Player player) {
-        Inventory inv = Bukkit.createInventory(player, 54, "Perk Codex");
+        Inventory inv = UiMenuUtils.createMenu(player, 54, "Perk Codex");
         int slot = 10;
         for (SwordPerkService.PerkDefinition perk : swordPerkService.availablePerks()) {
             if (slot >= 44) {
@@ -255,14 +255,14 @@ public class SwordMenuService {
             slot++;
         }
 
-        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to perks")));
-        fill(inv);
+        inv.setItem(49, UiMenuUtils.item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to perks")));
+        UiMenuUtils.fillEmptySlots(inv);
         player.openInventory(inv);
         contexts.put(player.getUniqueId(), new Context("perk_codex", 0, 0, EnchantCategory.SOULS, null, VIEW_SOULS));
     }
 
     public void openUpgrade(Player player, int swordId, int returnPage) {
-        Inventory inv = Bukkit.createInventory(player, 54, "Upgrade Sword Skin");
+        Inventory inv = UiMenuUtils.createMenu(player, 54, "Upgrade Sword Skin");
         SwordDefinition def = swordService.definition(swordId);
         int currentTier = swordService.swordTier(player, swordId);
 
@@ -286,14 +286,14 @@ public class SwordMenuService {
             inv.setItem(slots[tier - 1], item);
         }
 
-        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to skins")));
-        fill(inv);
+        inv.setItem(49, UiMenuUtils.item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to skins")));
+        UiMenuUtils.fillEmptySlots(inv);
         player.openInventory(inv);
         contexts.put(player.getUniqueId(), new Context("upgrade", returnPage, swordId, EnchantCategory.SOULS, null, VIEW_SKINS));
     }
 
     public void openEnchantDetail(Player player, EnchantCategory category, int page, EnchantDefinition def) {
-        Inventory inv = Bukkit.createInventory(player, 54, def.displayName());
+        Inventory inv = UiMenuUtils.createMenu(player, 54, def.displayName());
         int level = enchantService.enchantLevel(player, def.id());
         double baseChance = def.baseChance();
         double yourChance = enchantService.activationChance(player, def);
@@ -304,27 +304,27 @@ public class SwordMenuService {
                 ChatColor.GRAY + "Your Activation Chance: " + ChatColor.RED + chanceWithOdds(yourChance)
         )));
 
-        inv.setItem(12, item(Material.EMERALD, ChatColor.GREEN + "+1 Enchant Levels", List.of(
+        inv.setItem(12, UiMenuUtils.item(Material.EMERALD, ChatColor.GREEN + "+1 Enchant Levels", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + "1",
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 1)) + " " + def.costCurrency().name(),
                 ChatColor.GREEN + "CLICK HERE"
         )));
-        inv.setItem(13, item(Material.EXPERIENCE_BOTTLE, ChatColor.GREEN + "+10 Enchant Levels", List.of(
+        inv.setItem(13, UiMenuUtils.item(Material.EXPERIENCE_BOTTLE, ChatColor.GREEN + "+10 Enchant Levels", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + "10",
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 10)) + " " + def.costCurrency().name(),
                 ChatColor.GREEN + "CLICK HERE"
         )));
-        inv.setItem(14, item(Material.END_CRYSTAL, ChatColor.GREEN + "+100 Enchant Levels", List.of(
+        inv.setItem(14, UiMenuUtils.item(Material.END_CRYSTAL, ChatColor.GREEN + "+100 Enchant Levels", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + "100",
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 100)) + " " + def.costCurrency().name(),
                 ChatColor.GREEN + "CLICK HERE"
         )));
-        inv.setItem(15, item(Material.NETHER_STAR, ChatColor.GREEN + "+1000 Enchant Levels", List.of(
+        inv.setItem(15, UiMenuUtils.item(Material.NETHER_STAR, ChatColor.GREEN + "+1000 Enchant Levels", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + "1000",
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 1000)) + " " + def.costCurrency().name(),
                 ChatColor.GREEN + "CLICK HERE"
         )));
-        inv.setItem(16, item(Material.HOPPER, ChatColor.GREEN + "Max Upgrade", List.of(
+        inv.setItem(16, UiMenuUtils.item(Material.HOPPER, ChatColor.GREEN + "Max Upgrade", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + enchantService.maxAffordableLevels(player, def.id()),
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), enchantService.maxAffordableLevels(player, def.id()))) + " " + def.costCurrency().name(),
                 ChatColor.GREEN + "CLICK HERE"
@@ -332,19 +332,19 @@ public class SwordMenuService {
 
         boolean enabled = enchantService.enchantEnabled(player, def.id());
         boolean messages = enchantService.enchantMessageEnabled(player, def.id());
-        inv.setItem(30, item(Material.LEVER, ChatColor.GREEN + "Enchant Toggle", List.of(
+        inv.setItem(30, UiMenuUtils.item(Material.LEVER, ChatColor.GREEN + "Enchant Toggle", List.of(
                 ChatColor.GRAY + "Whether this enchant should be enabled while grinding",
                 enabled ? ChatColor.GREEN + "ENABLED" : ChatColor.RED + "DISABLED",
                 ChatColor.GRAY + "Click to toggle"
         )));
-        inv.setItem(32, item(Material.OAK_SIGN, ChatColor.GREEN + "Message Toggle", List.of(
+        inv.setItem(32, UiMenuUtils.item(Material.OAK_SIGN, ChatColor.GREEN + "Message Toggle", List.of(
                 ChatColor.GRAY + "Whether this enchant should send an activation message",
                 messages ? ChatColor.GREEN + "ENABLED" : ChatColor.RED + "DISABLED",
                 ChatColor.GRAY + "Click to toggle"
         )));
 
-        inv.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to enchant list")));
-        fill(inv);
+        inv.setItem(49, UiMenuUtils.item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to enchant list")));
+        UiMenuUtils.fillEmptySlots(inv);
         player.openInventory(inv);
         String view = category == EnchantCategory.ESSENCE ? VIEW_ESSENCE : VIEW_SOULS;
         contexts.put(player.getUniqueId(), new Context("enchant_detail", page, 0, category, def.id(), view));
@@ -555,26 +555,6 @@ public class SwordMenuService {
             }
         }
         return -1;
-    }
-
-    private void fill(Inventory inv) {
-        ItemStack glass = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
-        for (int i = 0; i < inv.getSize(); i++) {
-            if (inv.getItem(i) == null) {
-                inv.setItem(i, glass);
-            }
-        }
-    }
-
-    private ItemStack item(Material material, String name, List<String> lore) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            meta.setLore(lore);
-            item.setItemMeta(meta);
-        }
-        return item;
     }
 
     private String roman(int value) {
