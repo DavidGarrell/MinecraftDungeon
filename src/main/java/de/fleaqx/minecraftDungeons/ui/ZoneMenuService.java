@@ -5,7 +5,6 @@ import de.fleaqx.minecraftDungeons.currency.NumberFormat;
 import de.fleaqx.minecraftDungeons.model.StageDefinition;
 import de.fleaqx.minecraftDungeons.model.ZoneDefinition;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -13,7 +12,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,13 +29,13 @@ public class ZoneMenuService {
     }
 
     public void openZoneMenu(Player player) {
-        Inventory inventory = Bukkit.createInventory(player, 54, "Dungeon Zones");
+        Inventory inventory = UiMenuUtils.createMenu(player, 54, "Dungeon Zones");
 
         int slot = 19;
         for (ZoneDefinition zone : dungeonService.sortedZones()) {
             boolean unlocked = dungeonService.isZoneUnlocked(player, zone);
             Material material = unlocked ? Material.LIME_WOOL : Material.RED_WOOL;
-            ItemStack item = item(material,
+            ItemStack item = UiMenuUtils.item(material,
                     (unlocked ? ChatColor.GREEN : ChatColor.RED) + zone.displayName() + (unlocked ? " [Unlocked]" : " [Locked]"),
                     List.of(
                             ChatColor.GRAY + "Order: " + zone.order(),
@@ -51,7 +49,7 @@ public class ZoneMenuService {
             }
         }
 
-        inventory.setItem(4, item(Material.NETHER_STAR,
+        inventory.setItem(4, UiMenuUtils.item(Material.NETHER_STAR,
                 ChatColor.GOLD + "Max Upgrade",
                 List.of(
                         ChatColor.GRAY + "Buy as many zones as possible",
@@ -59,20 +57,20 @@ public class ZoneMenuService {
                         ChatColor.YELLOW + "Click to run max upgrade"
                 )));
 
-        inventory.setItem(6, item(Material.ENDER_PEARL,
+        inventory.setItem(6, UiMenuUtils.item(Material.ENDER_PEARL,
                 ChatColor.AQUA + "Go To Current Zone",
                 List.of(
                         ChatColor.GRAY + "Teleport to your highest",
                         ChatColor.GRAY + "unlocked zone spawn."
                 )));
 
-        fillBackground(inventory);
+        UiMenuUtils.fillEmptySlots(inventory);
         player.openInventory(inventory);
         openMenus.put(player.getUniqueId(), new MenuContext(MenuType.ZONES, null));
     }
 
     public void openStageMenu(Player player, ZoneDefinition zone) {
-        Inventory inventory = Bukkit.createInventory(player, 54, zone.displayName() + " Stages");
+        Inventory inventory = UiMenuUtils.createMenu(player, 54, zone.displayName() + " Stages");
         int unlockedStage = dungeonService.unlockedStage(player, zone.id());
         int selectedStage = dungeonService.selectedStage(player, zone.id());
 
@@ -97,13 +95,13 @@ public class ZoneMenuService {
                 lore.add(ChatColor.RED + "Unlock previous stage first");
             }
 
-            inventory.setItem(stageSlot(stageIndex), item(material,
+            inventory.setItem(stageSlot(stageIndex), UiMenuUtils.item(material,
                     (unlocked ? ChatColor.GREEN : ChatColor.RED) + "Stage " + stageIndex,
                     lore));
         }
 
-        inventory.setItem(49, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to zones")));
-        fillBackground(inventory);
+        inventory.setItem(49, UiMenuUtils.item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Back to zones")));
+        UiMenuUtils.fillEmptySlots(inventory);
         player.openInventory(inventory);
         openMenus.put(player.getUniqueId(), new MenuContext(MenuType.STAGES, zone.id()));
     }
@@ -251,26 +249,6 @@ public class ZoneMenuService {
             }
         }
         return -1;
-    }
-
-    private void fillBackground(Inventory inventory) {
-        ItemStack glass = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
-        for (int i = 0; i < inventory.getSize(); i++) {
-            if (inventory.getItem(i) == null) {
-                inventory.setItem(i, glass);
-            }
-        }
-    }
-
-    private ItemStack item(Material material, String name, List<String> lore) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            meta.setLore(lore);
-            item.setItemMeta(meta);
-        }
-        return item;
     }
 
     private enum MenuType {
