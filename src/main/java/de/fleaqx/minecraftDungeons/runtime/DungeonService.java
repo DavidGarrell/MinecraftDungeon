@@ -14,7 +14,7 @@ import de.fleaqx.minecraftDungeons.profile.ProfileService;
 import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import de.fleaqx.minecraftDungeons.rebirth.RebirthService;
 import de.fleaqx.minecraftDungeons.companion.CompanionService;
-import org.bukkit.Bukkit;
+import de.fleaqx.minecraftDungeons.util.EntityLookup;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
@@ -405,7 +405,7 @@ public class DungeonService {
 
         List<LivingEntity> out = new java.util.ArrayList<>();
         for (UUID id : session.activeMobs()) {
-            Entity entity = Bukkit.getEntity(id);
+            Entity entity = EntityLookup.find(id);
             if (entity instanceof LivingEntity living && living.isValid()) {
                 out.add(living);
             }
@@ -630,7 +630,7 @@ public class DungeonService {
 
         UUID existingId = afkMobByPlayer.get(player.getUniqueId());
         if (existingId != null) {
-            Entity existing = Bukkit.getEntity(existingId);
+            Entity existing = EntityLookup.find(existingId);
             if (existing instanceof LivingEntity living
                     && living.isValid()
                     && canPlayerAttackMob(player, existingId)
@@ -811,7 +811,7 @@ public class DungeonService {
                 continue;
             }
             boolean afkMob = isAfkMobId(mobId);
-            Entity entity = Bukkit.getEntity(mobId);
+            Entity entity = EntityLookup.find(mobId);
             if (entity != null) {
                 rarityVisualService.clear(entity);
                 visibilityService.unregister(entity);

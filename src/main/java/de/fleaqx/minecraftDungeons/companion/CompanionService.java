@@ -5,7 +5,7 @@ import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.profile.ProfileService;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.ui.HeadItemFactory;
-import org.bukkit.Bukkit;
+import de.fleaqx.minecraftDungeons.util.EntityLookup;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -774,7 +774,7 @@ public class CompanionService {
                 return false;
             }
             for (UUID textId : textIds) {
-                Entity entity = Bukkit.getEntity(textId);
+                Entity entity = EntityLookup.find(textId);
                 if (entity == null || !entity.isValid()) {
                     return false;
                 }
@@ -798,7 +798,7 @@ public class CompanionService {
             if (id == null || anchor.getWorld() == null) {
                 return;
             }
-            Entity entity = Bukkit.getEntity(id);
+            Entity entity = EntityLookup.findInWorld(anchor.getWorld(), id);
             if (entity != null && entity.isValid()) {
                 entity.remove();
             }
