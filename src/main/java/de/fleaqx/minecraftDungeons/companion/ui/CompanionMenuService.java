@@ -270,7 +270,7 @@ public class CompanionMenuService {
                         player.sendMessage(best.rarity().color() + "Best roll: " + best.name() + ChatColor.GRAY + " [" + best.mutation().name() + "] " + ChatColor.GREEN + best.multiplier() + "x");
                     }
                 }
-                openEggMenu(player, ctx.zoneId(), ctx.stage());
+                openEggMenu(player, ctx.zoneId(), resolveStageForZone(player, ctx.zoneId(), 0));
                 return true;
             }
             if (slot == 49) {
@@ -343,7 +343,7 @@ public class CompanionMenuService {
             if (ctx.zoneId() == null || ctx.zoneId().isBlank()) {
                 player.sendMessage(ChatColor.RED + "No active zone found. Enter a zone first.");
             } else {
-                openEggMenu(player, ctx.zoneId(), ctx.stage());
+                openEggMenu(player, ctx.zoneId(), resolveStageForZone(player, ctx.zoneId(), 0));
             }
             return true;
         }
