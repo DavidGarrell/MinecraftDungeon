@@ -12,6 +12,7 @@ import de.fleaqx.minecraftDungeons.model.ZoneDefinition;
 import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.profile.ProfileService;
 import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
+import de.fleaqx.minecraftDungeons.rebirth.RebirthService;
 import de.fleaqx.minecraftDungeons.companion.CompanionService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -49,6 +50,7 @@ public class DungeonService {
     private EnchantService enchantService;
     private SwordPerkService swordPerkService;
     private CompanionService companionService;
+    private RebirthService rebirthService;
 
     private final Map<String, ZoneDefinition> zones = new HashMap<>();
     private final Map<UUID, PlayerDungeonSession> sessions = new ConcurrentHashMap<>();
@@ -129,6 +131,10 @@ public class DungeonService {
 
     public void setCompanionService(CompanionService companionService) {
         this.companionService = companionService;
+    }
+
+    public void setRebirthService(RebirthService rebirthService) {
+        this.rebirthService = rebirthService;
     }
 
     public Collection<ZoneDefinition> zones() {
@@ -284,6 +290,8 @@ public class DungeonService {
 
         lastCombatLocations.put(player.getUniqueId(), entity.getLocation().clone());
         lastCombatMobTemplates.put(player.getUniqueId(), result.mob());
+
+        entity.playHurtAnimation(player.getLocation().getYaw());
 
         if (!result.dead()) {
             return new AttackResult(true, false);
@@ -716,10 +724,29 @@ public class DungeonService {
             money = scaleByMultiplier(money, companionService.moneyMultiplier(player));
         }
 
+        if (rebirthService != null && money.compareTo(java.math.BigInteger.ZERO) > 0) {
+            money = scaleByMultiplier(money, rebirthService.moneyMultiplier(player));
+        }
+
         profile.add(CurrencyType.MONEY, money);
         profile.add(CurrencyType.SOULS, souls);
         profile.add(CurrencyType.ESSENCE, essence);
         profile.add(CurrencyType.SHARDS, rewards.shards());
+    }
+
+
+    public void resetProgressAfterRebirth(Player player) {
+        removePlayer(player.getUniqueId());
+
+        Optional<ZoneDefinition> first = zoneByOrder(1);
+        if (first.isPresent()) {
+            ZoneDefinition zone = first.get();
+            if (zone.spawn() != null && zone.spawn().getWorld() != null) {
+                player.teleport(zone.spawn());
+            }
+            selectStage(player, zone.id(), 1);
+            forceStart(player, zone, 1);
+        }
     }
 
     private java.math.BigInteger scaleByMultiplier(java.math.BigInteger base, double multiplier) {

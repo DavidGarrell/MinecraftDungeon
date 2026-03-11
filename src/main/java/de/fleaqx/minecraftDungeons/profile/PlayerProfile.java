@@ -27,6 +27,8 @@ public class PlayerProfile {
     private final Map<String, Boolean> enchantMessageEnabled = new HashMap<>();
 
     private int perkPoints = 0;
+    private int rebirths = 0;
+    private int rebirthPoints = 0;
     private int perkRolls = 0;
     private String currentPerkId = "none";
     private int currentPerkLevel = 0;
@@ -218,6 +220,44 @@ public class PlayerProfile {
 
     public void currentPerkLevel(int currentPerkLevel) {
         this.currentPerkLevel = Math.max(0, currentPerkLevel);
+    }
+
+
+    public int rebirths() {
+        return rebirths;
+    }
+
+    public void rebirths(int rebirths) {
+        this.rebirths = Math.max(0, rebirths);
+    }
+
+    public int rebirthPoints() {
+        return rebirthPoints;
+    }
+
+    public void rebirthPoints(int rebirthPoints) {
+        this.rebirthPoints = Math.max(0, rebirthPoints);
+    }
+
+    public void addRebirthPoints(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        rebirthPoints += amount;
+    }
+
+    public void resetProgressionForRebirth() {
+        for (CurrencyType type : CurrencyType.values()) {
+            balances.put(type, BigInteger.ZERO);
+        }
+
+        unlockedZoneOrder = 1;
+        unlockedStages.clear();
+        selectedStages.clear();
+
+        selectedSword = 1;
+        swordLevels.clear();
+        swordLevels.put(1, 1);
     }
 
     public Map<Integer, Integer> swordLevelsRaw() {
