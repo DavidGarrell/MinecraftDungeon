@@ -54,15 +54,22 @@ public class CompanionMenuService {
 
         String activeZoneId = null;
         int activeStage = 1;
-        Optional<DungeonService.PlayerZoneContext> zoneContext = dungeonService.currentZoneContext(player);
-        if (zoneContext.isPresent()) {
-            activeZoneId = zoneContext.get().zoneId();
-            activeStage = Math.max(1, zoneContext.get().stage());
-        } else if (contexts.containsKey(player.getUniqueId())) {
-            MenuContext previous = contexts.get(player.getUniqueId());
-            if (previous.zoneId() != null && !previous.zoneId().isBlank()) {
-                activeZoneId = previous.zoneId();
-                activeStage = Math.max(1, previous.stage());
+
+        Optional<CompanionService.EggPoint> nearbyEgg = companionService.nearbyEgg(player, 10.0D);
+        if (nearbyEgg.isPresent()) {
+            activeZoneId = nearbyEgg.get().zoneId();
+            activeStage = Math.max(1, nearbyEgg.get().stage());
+        } else {
+            Optional<DungeonService.PlayerZoneContext> zoneContext = dungeonService.currentZoneContext(player);
+            if (zoneContext.isPresent()) {
+                activeZoneId = zoneContext.get().zoneId();
+                activeStage = Math.max(1, zoneContext.get().stage());
+            } else if (contexts.containsKey(player.getUniqueId())) {
+                MenuContext previous = contexts.get(player.getUniqueId());
+                if (previous.zoneId() != null && !previous.zoneId().isBlank()) {
+                    activeZoneId = previous.zoneId();
+                    activeStage = Math.max(1, previous.stage());
+                }
             }
         }
 
