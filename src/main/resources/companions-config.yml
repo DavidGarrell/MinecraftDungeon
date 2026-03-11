@@ -1,7 +1,7 @@
 # Separate companion balancing/config file
 # You can configure a global default pool and override per zone below.
 
-stage-power-factor: 1.85
+stage-power-factor: 1.852
 
 cost:
   base: 800
@@ -42,13 +42,13 @@ companions:
   wolf:
     name: "Wolf Companion"
     rarity: LEGENDARY
-    base-multiplier: 0.20
+    base-multiplier: 0.15
     preview-material: WOLF_SPAWN_EGG
     preview: true
   dragon:
     name: "Dragon Companion"
     rarity: MYTHIC
-    base-multiplier: 0.80
+    base-multiplier: 0.25
     preview-material: DRAGON_EGG
     preview: false
 

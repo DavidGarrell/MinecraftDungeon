@@ -76,10 +76,10 @@ public class VirtualHealthService {
         }
 
         ChatColor rarityColor = rarityColor(health.mob().rarity());
-        String rarity = ChatColor.BOLD + capitalize(health.mob().rarity().name());
+        String rarity = capitalize(health.mob().rarity().name());
         String mobName = capitalizeWords(health.mob().entityType().name());
 
-        String name = rarityColor + "[" + rarity + "] "
+        String name = rarityColor + "" + ChatColor.BOLD + "[" + rarity + "] "
                 + ChatColor.GRAY + "[Level: " + health.level() + "] "
                 + ChatColor.WHITE + mobName + " "
                 + ChatColor.RED + "\u2764" + hp;
