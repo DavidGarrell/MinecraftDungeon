@@ -26,6 +26,15 @@ public class CombatBossBarService {
             bar.addPlayer(player);
         }
 
+        if (state.mob().id().equalsIgnoreCase("afk_mob")) {
+            String name = capitalizeWords(state.mob().entityType().name());
+            bar.setTitle(ChatColor.RED + "" + ChatColor.BOLD + "[AFK] " + ChatColor.GRAY + name + " " + ChatColor.RED + "❤∞");
+            bar.setColor(BarColor.RED);
+            bar.setProgress(1.0D);
+            bar.setVisible(true);
+            return;
+        }
+
         String rarity = capitalize(state.mob().rarity().name());
         String name = capitalizeWords(state.mob().entityType().name());
         String hp = NumberFormat.compact(state.current());

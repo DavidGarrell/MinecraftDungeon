@@ -479,18 +479,11 @@ public class DungeonService {
         clearSessionMobs(session, false);
         session.stageKills(0);
 
-        MobEntry preferredMob = lastCombatMobTemplates.get(player.getUniqueId());
-        boolean canUsePreferredMob = preferredMob != null && candidateMobs.stream().anyMatch(m -> m.id().equalsIgnoreCase(preferredMob.id()));
         int stageMobCount = Math.max(1, zone.mobsPerStage());
 
         for (int i = 0; i < stageMobCount; i++) {
-            MobEntry chosen;
-            if (i == 0 && canUsePreferredMob) {
-                chosen = applyStageScaling(preferredMob, zone, session.currentStage());
-            } else {
-                MobEntry weighted = pickWeighted(candidateMobs);
-                chosen = applyStageScaling(weighted, zone, session.currentStage());
-            }
+            MobEntry weighted = pickWeighted(candidateMobs);
+            MobEntry chosen = applyStageScaling(weighted, zone, session.currentStage());
 
             Location spawnLocation;
             if (i == 0 && preferredSpawn != null && zone.area().contains(preferredSpawn)) {
