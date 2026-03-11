@@ -1,7 +1,7 @@
 package de.fleaqx.minecraftDungeons.runtime;
 
 import de.fleaqx.minecraftDungeons.enchant.EnchantService;
-import org.bukkit.Bukkit;
+import de.fleaqx.minecraftDungeons.util.EntityLookup;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -94,7 +94,7 @@ public class AutoAttackService {
                 continue;
             }
 
-            Entity entity = Bukkit.getEntity(state.targetId());
+            Entity entity = EntityLookup.find(state.targetId());
             LivingEntity target = null;
             if (entity instanceof LivingEntity living && living.isValid() && dungeonService.canPlayerAttackMob(player, living.getUniqueId())) {
                 target = living;
