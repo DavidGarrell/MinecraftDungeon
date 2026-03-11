@@ -4,7 +4,7 @@ import de.fleaqx.minecraftDungeons.companion.CompanionService;
 import de.fleaqx.minecraftDungeons.currency.NumberFormat;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.ui.HeadItemFactory;
-import de.fleaqx.minecraftDungeons.ui.UiMenuUtils;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -48,7 +48,7 @@ public class CompanionMenuService {
                                 String awaitingBulkConfirm,
                                 BulkMode pendingBulkMode,
                                 String pendingBulkValue) {
-        Inventory inv = UiMenuUtils.createMenu(player, 54, "Companions");
+        Inventory inv = Bukkit.createInventory(player, 54, "Companions");
         int maxSlots = companionService.maxEquipSlots(player);
         List<CompanionService.OwnedCompanion> equipped = companionService.equipped(player);
 
@@ -69,8 +69,8 @@ public class CompanionMenuService {
         for (int i = 0; i < 6; i++) {
             boolean unlocked = i < maxSlots;
             ItemStack slotItem = unlocked
-                    ? UiMenuUtils.item(Material.LIME_STAINED_GLASS_PANE, ChatColor.GREEN + "Equip Slot " + (i + 1), List.of(ChatColor.GRAY + "Click a companion below"))
-                    : UiMenuUtils.item(Material.RED_STAINED_GLASS_PANE, ChatColor.RED + "Locked Slot", List.of(ChatColor.GRAY + "Permission required"));
+                    ? item(Material.LIME_STAINED_GLASS_PANE, ChatColor.GREEN + "Equip Slot " + (i + 1), List.of(ChatColor.GRAY + "Click a companion below"))
+                    : item(Material.RED_STAINED_GLASS_PANE, ChatColor.RED + "Locked Slot", List.of(ChatColor.GRAY + "Permission required"));
             inv.setItem(2 + i, slotItem);
         }
 
@@ -92,21 +92,21 @@ public class CompanionMenuService {
 
         inv.setItem(45, deleteToggleItem(selectionMode, awaitingDeleteConfirm));
         inv.setItem(46, bulkDeleteItem(awaitingBulkConfirm));
-        inv.setItem(48, UiMenuUtils.item(Material.CLOCK, ChatColor.LIGHT_PURPLE + "Page " + safePage + "/" + pages, List.of(ChatColor.GRAY + "Browse companions")));
-        inv.setItem(50, UiMenuUtils.item(Material.BLAZE_ROD, ChatColor.RED + "Next", List.of(ChatColor.GRAY + "Go to next page")));
-        inv.setItem(52, UiMenuUtils.item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
-        inv.setItem(53, UiMenuUtils.item(Material.DIAMOND, ChatColor.AQUA + "Equip Best", List.of(ChatColor.GREEN + "Click to equip best!")));
+        inv.setItem(48, item(Material.CLOCK, ChatColor.LIGHT_PURPLE + "Page " + safePage + "/" + pages, List.of(ChatColor.GRAY + "Browse companions")));
+        inv.setItem(50, item(Material.BLAZE_ROD, ChatColor.RED + "Next", List.of(ChatColor.GRAY + "Go to next page")));
+        inv.setItem(52, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
+        inv.setItem(53, item(Material.DIAMOND, ChatColor.AQUA + "Equip Best", List.of(ChatColor.GREEN + "Click to equip best!")));
         inv.setItem(47, dragonEggShortcutItem(activeZoneId, activeStage));
         inv.setItem(49, companionHudItem(activeZoneId, activeStage));
 
-        UiMenuUtils.fillEmptySlots(inv);
+        fill(inv);
         player.openInventory(inv);
         contexts.put(player.getUniqueId(), new MenuContext("companions", activeZoneId, activeStage, safePage, selectionMode,
                 new HashSet<>(selectedIds), awaitingDeleteConfirm, awaitingBulkConfirm, pendingBulkMode, pendingBulkValue));
     }
 
     private void openBulkDeleteMenu(Player player, int page, String awaitingBulkConfirm, BulkMode pendingMode, String pendingValue) {
-        Inventory inv = UiMenuUtils.createMenu(player, 54, "Bulk Delete Companions");
+        Inventory inv = Bukkit.createInventory(player, 54, "Bulk Delete Companions");
 
         List<String> options = new ArrayList<>();
         for (CompanionService.CompanionRarity rarity : CompanionService.CompanionRarity.values()) {
@@ -137,13 +137,13 @@ public class CompanionMenuService {
             }
         }
 
-        inv.setItem(45, UiMenuUtils.item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Return to companions")));
-        inv.setItem(48, UiMenuUtils.item(Material.CLOCK, ChatColor.LIGHT_PURPLE + "Page " + safePage + "/" + pages, List.of(ChatColor.GRAY + "Bulk filters")));
-        inv.setItem(50, UiMenuUtils.item(Material.BLAZE_ROD, ChatColor.RED + "Next", List.of(ChatColor.GRAY + "Go to next page")));
-        inv.setItem(52, UiMenuUtils.item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
+        inv.setItem(45, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Return to companions")));
+        inv.setItem(48, item(Material.CLOCK, ChatColor.LIGHT_PURPLE + "Page " + safePage + "/" + pages, List.of(ChatColor.GRAY + "Bulk filters")));
+        inv.setItem(50, item(Material.BLAZE_ROD, ChatColor.RED + "Next", List.of(ChatColor.GRAY + "Go to next page")));
+        inv.setItem(52, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
         inv.setItem(53, bulkDeleteItem(awaitingBulkConfirm));
 
-        UiMenuUtils.fillEmptySlots(inv);
+        fill(inv);
         player.openInventory(inv);
         contexts.put(player.getUniqueId(), new MenuContext("bulk-delete", null, 1, safePage, false,
                 new HashSet<>(), null, awaitingBulkConfirm, pendingMode, pendingValue));
@@ -154,7 +154,7 @@ public class CompanionMenuService {
             return;
         }
         zoneId = zoneId.toLowerCase(Locale.ROOT);
-        Inventory inv = UiMenuUtils.createMenu(player, 54, "Companion Eggs");
+        Inventory inv = Bukkit.createInventory(player, 54, "Companion Eggs");
 
         long price = companionService.costPerDraw(stage);
         inv.setItem(13, HeadItemFactory.head(
@@ -170,7 +170,7 @@ public class CompanionMenuService {
                 )
         ));
 
-        inv.setItem(4, UiMenuUtils.item(Material.NETHER_STAR, ChatColor.AQUA + "Companion HUD", List.of(
+        inv.setItem(4, item(Material.NETHER_STAR, ChatColor.AQUA + "Companion HUD", List.of(
                 ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
                 ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
                 ChatColor.GRAY + "Price / Egg: " + ChatColor.GREEN + NumberFormat.compact(BigInteger.valueOf(price)) + " Money"
@@ -188,8 +188,8 @@ public class CompanionMenuService {
         inv.setItem(42, rollItem(10, price));
         inv.setItem(44, rollItem(64, price));
 
-        inv.setItem(49, UiMenuUtils.item(Material.CHEST, ChatColor.AQUA + "My Companions", List.of(ChatColor.GRAY + "Open companion inventory")));
-        UiMenuUtils.fillEmptySlots(inv);
+        inv.setItem(49, item(Material.CHEST, ChatColor.AQUA + "My Companions", List.of(ChatColor.GRAY + "Open companion inventory")));
+        fill(inv);
         player.openInventory(inv);
         contexts.put(player.getUniqueId(), new MenuContext("eggs", zoneId, stage, 1, false, new HashSet<>(), null, null, null, null));
     }
@@ -391,7 +391,7 @@ public class CompanionMenuService {
 
     private ItemStack rollItem(int amount, long pricePerDraw) {
         long total = pricePerDraw * amount;
-        return UiMenuUtils.item(Material.BLACK_DYE, ChatColor.LIGHT_PURPLE + "Open " + amount + " Companions",
+        return item(Material.BLACK_DYE, ChatColor.LIGHT_PURPLE + "Open " + amount + " Companions",
                 List.of(
                         " ",
                         ChatColor.GRAY + "Click to open " + ChatColor.YELLOW + amount + ChatColor.GRAY + " companion(s)",
@@ -404,7 +404,7 @@ public class CompanionMenuService {
     }
 
     private ItemStack toggleAnimationsItem() {
-        return UiMenuUtils.item(Material.BLAZE_ROD, ChatColor.GREEN + "Toggle Animations",
+        return item(Material.BLAZE_ROD, ChatColor.GREEN + "Toggle Animations",
                 List.of(
                         ChatColor.GRAY + "Toggle whether or not to play an animation",
                         ChatColor.GRAY + "when opening companion eggs.",
@@ -415,7 +415,7 @@ public class CompanionMenuService {
 
     private ItemStack companionPreview(CompanionService.CompanionDefinition definition, String zoneId, int stage) {
         String rarity = definition.rarity().color() + capitalize(definition.rarity().name());
-        return UiMenuUtils.item(definition.previewMaterial(), definition.rarity().color() + definition.name(),
+        return item(definition.previewMaterial(), definition.rarity().color() + definition.name(),
                 List.of(
                         ChatColor.GRAY + "Rarity: " + rarity,
                         ChatColor.GRAY + "Multiplier: " + ChatColor.GREEN + String.format(Locale.US, "%.3fx", definition.baseMultiplier()),
@@ -426,13 +426,13 @@ public class CompanionMenuService {
 
     private ItemStack dragonEggShortcutItem(String zoneId, int stage) {
         if (zoneId == null || zoneId.isBlank()) {
-            return UiMenuUtils.item(Material.DRAGON_EGG, ChatColor.DARK_GRAY + "Dragon Egg", List.of(
+            return item(Material.DRAGON_EGG, ChatColor.DARK_GRAY + "Dragon Egg", List.of(
                     ChatColor.GRAY + "No active zone found.",
                     ChatColor.YELLOW + "Enter a zone to hatch companions."
             ));
         }
 
-        return UiMenuUtils.item(Material.DRAGON_EGG, ChatColor.LIGHT_PURPLE + "Dragon Egg", List.of(
+        return item(Material.DRAGON_EGG, ChatColor.LIGHT_PURPLE + "Dragon Egg", List.of(
                 ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
                 ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
                 ChatColor.GREEN + "Click to open companion eggs"
@@ -441,14 +441,14 @@ public class CompanionMenuService {
 
     private ItemStack companionHudItem(String zoneId, int stage) {
         if (zoneId == null || zoneId.isBlank()) {
-            return UiMenuUtils.item(Material.COMPASS, ChatColor.GRAY + "Companion HUD", List.of(
+            return item(Material.COMPASS, ChatColor.GRAY + "Companion HUD", List.of(
                     ChatColor.GRAY + "Zone: " + ChatColor.RED + "Unknown",
                     ChatColor.GRAY + "Stage: " + ChatColor.RED + "-"
             ));
         }
 
         long price = companionService.costPerDraw(stage);
-        return UiMenuUtils.item(Material.COMPASS, ChatColor.AQUA + "Companion HUD", List.of(
+        return item(Material.COMPASS, ChatColor.AQUA + "Companion HUD", List.of(
                 ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
                 ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
                 ChatColor.GRAY + "Price / Egg: " + ChatColor.GREEN + NumberFormat.compact(BigInteger.valueOf(price)) + " Money"
@@ -457,7 +457,7 @@ public class CompanionMenuService {
 
     private ItemStack deleteToggleItem(boolean enabled, String awaitingConfirm) {
         if (!enabled) {
-            return UiMenuUtils.item(Material.GLOWSTONE_DUST, ChatColor.GOLD + "Delete Companions", List.of(
+            return item(Material.GLOWSTONE_DUST, ChatColor.GOLD + "Delete Companions", List.of(
                     ChatColor.GRAY + "Delete multiple companions at once by selecting them",
                     ChatColor.GRAY + "and clicking the button again to confirm deletion.",
                     " ",
@@ -465,12 +465,12 @@ public class CompanionMenuService {
             ));
         }
         if (awaitingConfirm != null) {
-            return UiMenuUtils.item(Material.REDSTONE, ChatColor.RED + "Confirm Delete", List.of(
+            return item(Material.REDSTONE, ChatColor.RED + "Confirm Delete", List.of(
                     ChatColor.RED + "This action cannot be undone.",
                     ChatColor.YELLOW + "Click to delete selected companions now."
             ));
         }
-        return UiMenuUtils.item(Material.BLAZE_POWDER, ChatColor.YELLOW + "Delete Mode Enabled", List.of(
+        return item(Material.BLAZE_POWDER, ChatColor.YELLOW + "Delete Mode Enabled", List.of(
                 ChatColor.GRAY + "Click companions to select them.",
                 ChatColor.YELLOW + "Then click this button again to confirm."
         ));
@@ -478,21 +478,21 @@ public class CompanionMenuService {
 
     private ItemStack bulkDeleteItem(String pendingLabel) {
         if (pendingLabel == null) {
-            return UiMenuUtils.item(Material.NETHER_STAR, ChatColor.RED + "Bulk Delete", List.of(
+            return item(Material.NETHER_STAR, ChatColor.RED + "Bulk Delete", List.of(
                     ChatColor.GRAY + "Delete all companions with a specific rarity or zone",
                     ChatColor.GRAY + "in a dedicated filter menu.",
                     " ",
                     ChatColor.GREEN + "Click to bulk delete companions!"
             ));
         }
-        return UiMenuUtils.item(Material.REDSTONE_BLOCK, ChatColor.DARK_RED + "Confirm Bulk Delete", List.of(
+        return item(Material.REDSTONE_BLOCK, ChatColor.DARK_RED + "Confirm Bulk Delete", List.of(
                 ChatColor.GRAY + "Selected filter: " + ChatColor.YELLOW + pendingLabel,
                 ChatColor.RED + "Click to permanently delete companions."
         ));
     }
 
     private ItemStack bulkRarityItem(CompanionService.CompanionRarity rarity) {
-        ItemStack item = UiMenuUtils.item(Material.PAPER, rarity.color() + "Rarity: " + rarity.name(), List.of(
+        ItemStack item = item(Material.PAPER, rarity.color() + "Rarity: " + rarity.name(), List.of(
                 ChatColor.GRAY + "Delete all " + rarity.color() + rarity.name() + ChatColor.GRAY + " companions.",
                 ChatColor.YELLOW + "Click to mark for confirm."
         ));
@@ -505,7 +505,7 @@ public class CompanionMenuService {
     }
 
     private ItemStack bulkZoneItem(String zoneId) {
-        ItemStack item = UiMenuUtils.item(Material.MAP, ChatColor.GREEN + "Zone: " + capitalize(zoneId), List.of(
+        ItemStack item = item(Material.MAP, ChatColor.GREEN + "Zone: " + capitalize(zoneId), List.of(
                 ChatColor.GRAY + "Delete all companions from this zone.",
                 ChatColor.YELLOW + "Click to mark for confirm."
         ));
@@ -545,6 +545,26 @@ public class CompanionMenuService {
             }
         }
         return null;
+    }
+
+    private ItemStack item(Material material, String name, List<String> lore) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            meta.setLore(lore);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private void fill(Inventory inv) {
+        ItemStack glass = item(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        for (int i = 0; i < inv.getSize(); i++) {
+            if (inv.getItem(i) == null) {
+                inv.setItem(i, glass);
+            }
+        }
     }
 
     private enum BulkMode {

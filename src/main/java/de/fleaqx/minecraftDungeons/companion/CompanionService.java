@@ -324,22 +324,31 @@ public class CompanionService {
 
     public Optional<EggPoint> nearbyEgg(Player player, double radius) {
         Location current = player.getLocation();
+        EggPoint nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
         for (Map.Entry<String, Location> entry : eggLocations.entrySet()) {
             Location target = entry.getValue();
             if (target.getWorld() == null || current.getWorld() == null || !target.getWorld().getUID().equals(current.getWorld().getUID())) {
                 continue;
             }
-            if (target.distanceSquared(current) <= radius * radius) {
-                String[] parts = entry.getKey().split(":");
-                if (parts.length == 2) {
-                    try {
-                        return Optional.of(new EggPoint(parts[0], Integer.parseInt(parts[1]), target));
-                    } catch (Exception ignored) {
-                    }
+            double distanceSquared = target.distanceSquared(current);
+            if (distanceSquared > radius * radius) {
+                continue;
+            }
+            String[] parts = entry.getKey().split(":");
+            if (parts.length != 2) {
+                continue;
+            }
+            try {
+                EggPoint candidate = new EggPoint(parts[0], Integer.parseInt(parts[1]), target);
+                if (distanceSquared < nearestDistance) {
+                    nearest = candidate;
+                    nearestDistance = distanceSquared;
                 }
+            } catch (Exception ignored) {
             }
         }
-        return Optional.empty();
+        return Optional.ofNullable(nearest);
     }
 
     public Optional<EggPoint> eggPointAtBlock(Block block) {
@@ -681,10 +690,10 @@ public class CompanionService {
         List<UUID> textIds = new ArrayList<>();
         List<String> lines = List.of(
                 ChatColor.GREEN + "Zone Egg",
-                ChatColor.GRAY + "Purchase a Companion that boosts",
-                ChatColor.GRAY + "the amount of money you gain!",
+                ChatColor.WHITE + "Purchase a Companion that boosts",
+                ChatColor.WHITE + "the amount of money you gain!",
                 ChatColor.GREEN + "| Price: " + price + " Money",
-                ChatColor.WHITE + "« Right Click to view »"
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "\u00ab Right Click to view \u00bb"
         );
 
         double startY = 2.95D;
@@ -889,3 +898,5 @@ public class CompanionService {
     public record EggPoint(String zoneId, int stage, Location location) {
     }
 }
+
+

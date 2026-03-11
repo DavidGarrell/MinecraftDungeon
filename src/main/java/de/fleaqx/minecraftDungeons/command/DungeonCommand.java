@@ -2,9 +2,11 @@ package de.fleaqx.minecraftDungeons.command;
 
 import de.fleaqx.minecraftDungeons.companion.CompanionService;
 import de.fleaqx.minecraftDungeons.companion.ui.CompanionMenuService;
+import de.fleaqx.minecraftDungeons.currency.CurrencyType;
 import de.fleaqx.minecraftDungeons.currency.NumberFormat;
 import de.fleaqx.minecraftDungeons.enchant.EnchantService;
 import de.fleaqx.minecraftDungeons.model.ZoneDefinition;
+import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import de.fleaqx.minecraftDungeons.sword.SwordService;
@@ -48,6 +50,7 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ChatColor.YELLOW + "/dungeon start <zone> [stage]");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon enchant <reload|list|setlevel|addlevel|settoollevel|addtoolxp>");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon perk <reload|list|set|addpoints>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon economy <get|set|add|take> <player> <currency|all> [amount]");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon companion <setlocation|egg|ui>");
             return true;
         }
@@ -115,6 +118,14 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             return handlePerkAdmin(sender, args);
+        }
+
+        if (args[0].equalsIgnoreCase("economy")) {
+            if (!sender.hasPermission("minecraftdungeons.admin")) {
+                sender.sendMessage(ChatColor.RED + "No permission.");
+                return true;
+            }
+            return handleEconomyAdmin(sender, args);
         }
 
         if (args[0].equalsIgnoreCase("companion")) {
@@ -295,6 +306,107 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private boolean handleEconomyAdmin(CommandSender sender, String[] args) {
+        if (args.length < 4) {
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon economy get <player> <currency|all>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon economy set <player> <currency|all> <amount>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon economy add <player> <currency|all> <amount>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon economy take <player> <currency|all> <amount>");
+            return true;
+        }
+
+        String action = args[1].toLowerCase();
+        Player target = Bukkit.getPlayerExact(args[2]);
+        if (target == null) {
+            sender.sendMessage(ChatColor.RED + "Player not found.");
+            return true;
+        }
+
+        PlayerProfile profile = dungeonService.profile(target);
+        boolean allCurrencies = args[3].equalsIgnoreCase("all");
+        CurrencyType type = allCurrencies ? null : CurrencyType.fromInput(args[3]);
+        if (!allCurrencies && type == null) {
+            sender.sendMessage(ChatColor.RED + "Unknown currency. Available: money, souls, essence, shards, all");
+            return true;
+        }
+
+        if (action.equals("get")) {
+            if (allCurrencies) {
+                for (CurrencyType currencyType : CurrencyType.values()) {
+                    sender.sendMessage(ChatColor.YELLOW + target.getName() + " " + currencyType.displayName() + ": "
+                            + ChatColor.GREEN + NumberFormat.compact(profile.balance(currencyType)));
+                }
+            } else {
+                sender.sendMessage(ChatColor.YELLOW + target.getName() + " " + type.displayName() + ": "
+                        + ChatColor.GREEN + NumberFormat.compact(profile.balance(type)));
+            }
+            return true;
+        }
+
+        if (!action.equals("set") && !action.equals("add") && !action.equals("take")) {
+            sender.sendMessage(ChatColor.RED + "Unknown economy subcommand.");
+            return true;
+        }
+
+        if (args.length < 5) {
+            sender.sendMessage(ChatColor.RED + "Usage: /dungeon economy " + action + " <player> <currency|all> <amount>");
+            return true;
+        }
+
+        BigInteger amount = NumberFormat.parse(args[4], BigInteger.valueOf(-1));
+        if (amount.compareTo(BigInteger.ZERO) < 0) {
+            sender.sendMessage(ChatColor.RED + "Invalid amount.");
+            return true;
+        }
+
+        if (!allCurrencies) {
+            if (!applyEconomyAction(profile, type, action, amount)) {
+                sender.sendMessage(ChatColor.RED + "Player does not have enough " + type.displayName() + ".");
+                return true;
+            }
+            sender.sendMessage(ChatColor.GREEN + "Updated " + target.getName() + "'s " + type.displayName() + " to "
+                    + NumberFormat.compact(profile.balance(type)) + ".");
+            return true;
+        }
+
+        if (action.equals("take")) {
+            for (CurrencyType currencyType : CurrencyType.values()) {
+                if (profile.balance(currencyType).compareTo(amount) < 0) {
+                    sender.sendMessage(ChatColor.RED + "Player does not have enough " + currencyType.displayName() + " for action 'all'.");
+                    return true;
+                }
+            }
+        }
+
+        for (CurrencyType currencyType : CurrencyType.values()) {
+            applyEconomyAction(profile, currencyType, action, amount);
+        }
+
+        sender.sendMessage(ChatColor.GREEN + "Updated all currencies for " + target.getName() + " by "
+                + NumberFormat.compact(amount) + ".");
+        return true;
+    }
+
+    private boolean applyEconomyAction(PlayerProfile profile, CurrencyType type, String action, BigInteger amount) {
+        return switch (action) {
+            case "set" -> {
+                BigInteger current = profile.balance(type);
+                if (current.compareTo(amount) < 0) {
+                    profile.add(type, amount.subtract(current));
+                } else if (current.compareTo(amount) > 0) {
+                    profile.remove(type, current.subtract(amount));
+                }
+                yield true;
+            }
+            case "add" -> {
+                profile.add(type, amount);
+                yield true;
+            }
+            case "take" -> profile.remove(type, amount);
+            default -> false;
+        };
+    }
+
     private boolean handleCompanion(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(ChatColor.YELLOW + "/dungeon companion setlocation <zoneId> <stage>");
@@ -390,7 +502,7 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return List.of("reload", "start", "enchant", "perk", "companion");
+            return List.of("reload", "start", "enchant", "perk", "economy", "companion");
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("start")) {
@@ -409,6 +521,10 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
             return List.of("reload", "list", "set", "addpoints");
         }
 
+        if (args.length == 2 && args[0].equalsIgnoreCase("economy")) {
+            return List.of("get", "set", "add", "take");
+        }
+
         if (args.length == 2 && args[0].equalsIgnoreCase("companion")) {
             return List.of("setlocation", "egg", "ui");
         }
@@ -423,6 +539,10 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
             return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
         }
 
+        if (args.length == 3 && args[0].equalsIgnoreCase("economy")) {
+            return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+        }
+
         if (args.length == 4 && args[0].equalsIgnoreCase("enchant")
                 && (args[1].equalsIgnoreCase("setlevel") || args[1].equalsIgnoreCase("addlevel"))) {
             return enchantService.enchantIds();
@@ -430,6 +550,15 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 4 && args[0].equalsIgnoreCase("perk") && args[1].equalsIgnoreCase("set")) {
             return swordPerkService.availablePerks().stream().map(SwordPerkService.PerkDefinition::id).toList();
+        }
+
+        if (args.length == 4 && args[0].equalsIgnoreCase("economy")) {
+            List<String> suggestions = new ArrayList<>();
+            for (CurrencyType type : CurrencyType.values()) {
+                suggestions.add(type.key());
+            }
+            suggestions.add("all");
+            return suggestions;
         }
 
         if (args.length == 3 && args[0].equalsIgnoreCase("companion") && args[1].equalsIgnoreCase("setlocation")) {
