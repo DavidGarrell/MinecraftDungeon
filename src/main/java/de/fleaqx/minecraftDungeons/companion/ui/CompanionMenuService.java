@@ -104,7 +104,7 @@ public class CompanionMenuService {
         inv.setItem(52, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
         inv.setItem(53, item(Material.DIAMOND, ChatColor.AQUA + "Equip Best", List.of(ChatColor.GREEN + "Click to equip best!")));
         inv.setItem(47, dragonEggShortcutItem(activeZoneId, activeStage));
-        inv.setItem(49, companionHudItem(activeZoneId, activeStage));
+        inv.setItem(49, companionHudItem(player, activeZoneId, activeStage));
 
         fill(inv);
         player.openInventory(inv);
@@ -161,9 +161,16 @@ public class CompanionMenuService {
             return;
         }
         zoneId = zoneId.toLowerCase(Locale.ROOT);
+
+        int safeStage = Math.max(1, stage);
+        int unlockedStage = Math.max(1, dungeonService.unlockedStage(player, zoneId));
+        if (safeStage > unlockedStage) {
+            safeStage = unlockedStage;
+        }
+
         Inventory inv = Bukkit.createInventory(player, 54, "Companion Eggs");
 
-        long price = companionService.costPerDraw(stage);
+        long price = companionService.costPerDraw(safeStage);
         inv.setItem(13, HeadItemFactory.head(
                 "http://textures.minecraft.net/texture/b23c6f17cb43cc6c5cfcc8ef3f7480fcead0b5e1c574b95f2c98b5eb2d646e47",
                 ChatColor.GREEN + "Zone Egg",
@@ -179,14 +186,14 @@ public class CompanionMenuService {
 
         inv.setItem(4, item(Material.NETHER_STAR, ChatColor.AQUA + "Companion HUD", List.of(
                 ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
-                ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
+                ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + safeStage,
                 ChatColor.GRAY + "Price / Egg: " + ChatColor.GREEN + NumberFormat.compact(BigInteger.valueOf(price)) + " Money"
         )));
 
         int[] previewSlots = new int[]{20, 22, 24, 30, 32};
         List<CompanionService.CompanionDefinition> previews = companionService.previewCompanions(zoneId);
         for (int i = 0; i < Math.min(previews.size(), previewSlots.length); i++) {
-            inv.setItem(previewSlots[i], companionPreview(previews.get(i), zoneId, stage));
+            inv.setItem(previewSlots[i], companionPreview(previews.get(i), zoneId, safeStage));
         }
 
         inv.setItem(36, toggleAnimationsItem());
@@ -198,7 +205,7 @@ public class CompanionMenuService {
         inv.setItem(49, item(Material.CHEST, ChatColor.AQUA + "My Companions", List.of(ChatColor.GRAY + "Open companion inventory")));
         fill(inv);
         player.openInventory(inv);
-        contexts.put(player.getUniqueId(), new MenuContext("eggs", zoneId, stage, 1, false, new HashSet<>(), null, null, null, null));
+        contexts.put(player.getUniqueId(), new MenuContext("eggs", zoneId, safeStage, 1, false, new HashSet<>(), null, null, null, null));
     }
 
     public boolean handleClick(InventoryClickEvent event) {
@@ -446,7 +453,7 @@ public class CompanionMenuService {
         ));
     }
 
-    private ItemStack companionHudItem(String zoneId, int stage) {
+    private ItemStack companionHudItem(Player player, String zoneId, int stage) {
         if (zoneId == null || zoneId.isBlank()) {
             return item(Material.COMPASS, ChatColor.GRAY + "Companion HUD", List.of(
                     ChatColor.GRAY + "Zone: " + ChatColor.RED + "Unknown",
@@ -454,10 +461,17 @@ public class CompanionMenuService {
             ));
         }
 
-        long price = companionService.costPerDraw(stage);
+        int safeStage = Math.max(1, stage);
+        int unlockedStage = Math.max(1, dungeonService.unlockedStage(player, zoneId));
+        if (safeStage > unlockedStage) {
+            safeStage = unlockedStage;
+        }
+
+        long price = companionService.costPerDraw(safeStage);
         return item(Material.COMPASS, ChatColor.AQUA + "Companion HUD", List.of(
                 ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
-                ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
+                ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + safeStage,
+                ChatColor.GRAY + "Unlocked Stage: " + ChatColor.YELLOW + unlockedStage,
                 ChatColor.GRAY + "Price / Egg: " + ChatColor.GREEN + NumberFormat.compact(BigInteger.valueOf(price)) + " Money"
         ));
     }
