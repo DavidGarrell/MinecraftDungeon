@@ -669,7 +669,7 @@ public class CompanionService {
         while (iterator.hasNext()) {
             Map.Entry<String, EggVisual> entry = iterator.next();
             Location expectedLocation = expected.get(entry.getKey());
-            if (expectedLocation == null || !entry.getValue().isAt(expectedLocation)) {
+            if (expectedLocation == null || !entry.getValue().isAt(expectedLocation) || !entry.getValue().isRenderable()) {
                 entry.getValue().remove();
                 iterator.remove();
             }
@@ -766,6 +766,19 @@ public class CompanionService {
                 return false;
             }
             return location.getWorld().getUID().equals(anchor.getWorld().getUID()) && location.distanceSquared(anchor) < 0.01D;
+        }
+
+        boolean isRenderable() {
+            if (anchor.getWorld() == null) {
+                return false;
+            }
+            for (UUID textId : textIds) {
+                Entity entity = anchor.getWorld().getEntity(textId);
+                if (entity == null || !entity.isValid()) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         void remove() {
@@ -914,5 +927,4 @@ public class CompanionService {
     public record EggPoint(String zoneId, int stage, Location location) {
     }
 }
-
 
