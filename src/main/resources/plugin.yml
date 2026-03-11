@@ -12,6 +12,9 @@ commands:
     description: Dungeon debug command
     usage: /dungeon <reload|start|enchant|perk|companion>
     permission: minecraftdungeons.admin
+  rebirth:
+    description: Open rebirth menu
+    usage: /rebirth
   pay:
     description: Pay souls/essence/shards to another player
     usage: /pay <player> <souls|essence|shards> <amount>

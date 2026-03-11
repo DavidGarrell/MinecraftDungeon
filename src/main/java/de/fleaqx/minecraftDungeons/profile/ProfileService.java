@@ -57,6 +57,8 @@ public class ProfileService {
             config.set(base + ".perks.rolls", profile.perkRolls());
             config.set(base + ".perks.current.id", profile.currentPerkId());
             config.set(base + ".perks.current.level", profile.currentPerkLevel());
+            config.set(base + ".rebirths", profile.rebirths());
+            config.set(base + ".rebirth-points", profile.rebirthPoints());
 
             for (CurrencyType type : CurrencyType.values()) {
                 config.set(base + ".currency." + type.key(), profile.balance(type).toString());
@@ -120,6 +122,8 @@ public class ProfileService {
             profile.perkRolls(config.getInt(base + ".perks.rolls", 0));
             profile.currentPerkId(config.getString(base + ".perks.current.id", "none"));
             profile.currentPerkLevel(config.getInt(base + ".perks.current.level", 0));
+            profile.rebirths(config.getInt(base + ".rebirths", 0));
+            profile.rebirthPoints(config.getInt(base + ".rebirth-points", 0));
 
             for (CurrencyType type : CurrencyType.values()) {
                 BigInteger amount = NumberFormat.parse(config.getString(base + ".currency." + type.key(), "0"), BigInteger.ZERO);
