@@ -33,7 +33,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class CompanionService {
 
-    private static final double DEFAULT_STAGE_POWER_FACTOR = 1.85D;
+    private static final double DEFAULT_STAGE_POWER_FACTOR = 1.852D;
     private static final double DEFAULT_COST_STAGE_FACTOR = 47.25D;
     private static final double DEFAULT_BASE_COST = 800.0D;
 
@@ -600,6 +600,14 @@ public class CompanionService {
         return defaultDefinitionStatic(rarity);
     }
 
+    private String capitalize(String value) {
+        if (value == null || value.isBlank()) {
+            return "Unknown";
+        }
+        String lower = value.toLowerCase(Locale.ROOT);
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+    }
+
     private void load() {
         owned.clear();
         equipped.clear();
@@ -680,7 +688,14 @@ public class CompanionService {
 
         String[] parts = key.split(":");
         String zoneId = parts.length > 0 ? parts[0] : "unknown";
-        int stage = parts.length > 1 ? Integer.parseInt(parts[1]) : 1;
+        int stage = 1;
+        if (parts.length > 1) {
+            try {
+                stage = Integer.parseInt(parts[1]);
+            } catch (NumberFormatException ignored) {
+                stage = 1;
+            }
+        }
         long price = costPerDraw(stage);
 
         Location blockLocation = baseLocation.clone();
@@ -690,6 +705,7 @@ public class CompanionService {
         List<UUID> textIds = new ArrayList<>();
         List<String> lines = List.of(
                 ChatColor.GREEN + "Zone Egg",
+                ChatColor.YELLOW + "[" + capitalize(zoneId) + " Stage " + stage + "]",
                 ChatColor.WHITE + "Purchase a Companion that boosts",
                 ChatColor.WHITE + "the amount of money you gain!",
                 ChatColor.GREEN + "| Price: " + price + " Money",
@@ -818,10 +834,10 @@ public class CompanionService {
 
     public enum CompanionRarity {
         COMMON(ChatColor.WHITE, 0.05D),
-        RARE(ChatColor.AQUA, 0.10D),
-        EPIC(ChatColor.LIGHT_PURPLE, 0.20D),
-        LEGENDARY(ChatColor.GOLD, 0.40D),
-        MYTHIC(ChatColor.RED, 0.80D);
+        RARE(ChatColor.AQUA, 0.075D),
+        EPIC(ChatColor.LIGHT_PURPLE, 0.10D),
+        LEGENDARY(ChatColor.GOLD, 0.15D),
+        MYTHIC(ChatColor.RED, 0.25D);
 
         private final ChatColor color;
         private final double defaultBaseMultiplier;

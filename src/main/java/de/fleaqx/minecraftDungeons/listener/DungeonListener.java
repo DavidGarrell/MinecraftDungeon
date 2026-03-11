@@ -5,6 +5,7 @@ import de.fleaqx.minecraftDungeons.companion.ui.CompanionMenuService;
 import de.fleaqx.minecraftDungeons.runtime.AutoAttackService;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.runtime.VirtualHealthService;
+import de.fleaqx.minecraftDungeons.rebirth.ui.RebirthMenuService;
 import de.fleaqx.minecraftDungeons.sword.SwordService;
 import de.fleaqx.minecraftDungeons.sword.ui.SwordMenuService;
 import de.fleaqx.minecraftDungeons.ui.ZoneMenuService;
@@ -41,6 +42,7 @@ public class DungeonListener implements Listener {
     private final SwordMenuService swordMenuService;
     private final CompanionService companionService;
     private final CompanionMenuService companionMenuService;
+    private final RebirthMenuService rebirthMenuService;
 
     public DungeonListener(DungeonService dungeonService,
                            VirtualHealthService virtualHealthService,
@@ -49,7 +51,8 @@ public class DungeonListener implements Listener {
                            SwordService swordService,
                            SwordMenuService swordMenuService,
                            CompanionService companionService,
-                           CompanionMenuService companionMenuService) {
+                           CompanionMenuService companionMenuService,
+                           RebirthMenuService rebirthMenuService) {
         this.dungeonService = dungeonService;
         this.virtualHealthService = virtualHealthService;
         this.zoneMenuService = zoneMenuService;
@@ -58,6 +61,7 @@ public class DungeonListener implements Listener {
         this.swordMenuService = swordMenuService;
         this.companionService = companionService;
         this.companionMenuService = companionMenuService;
+        this.rebirthMenuService = rebirthMenuService;
     }
 
     @EventHandler
@@ -123,6 +127,9 @@ public class DungeonListener implements Listener {
         if (companionMenuService.handleClick(event)) {
             return;
         }
+        if (rebirthMenuService.handleClick(event)) {
+            return;
+        }
         zoneMenuService.handleClick(event);
     }
 
@@ -130,6 +137,7 @@ public class DungeonListener implements Listener {
     public void onInventoryClose(InventoryCloseEvent event) {
         swordMenuService.handleClose(event);
         companionMenuService.handleClose(event);
+        rebirthMenuService.handleClose(event);
         zoneMenuService.handleClose(event);
     }
 

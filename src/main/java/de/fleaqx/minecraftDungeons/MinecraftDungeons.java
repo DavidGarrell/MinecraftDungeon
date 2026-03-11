@@ -3,6 +3,7 @@ package de.fleaqx.minecraftDungeons;
 import de.fleaqx.minecraftDungeons.command.DungeonCommand;
 import de.fleaqx.minecraftDungeons.command.PayCommand;
 import de.fleaqx.minecraftDungeons.command.ZoneCommand;
+import de.fleaqx.minecraftDungeons.command.RebirthCommand;
 import de.fleaqx.minecraftDungeons.companion.CompanionService;
 import de.fleaqx.minecraftDungeons.companion.ui.CompanionMenuService;
 import de.fleaqx.minecraftDungeons.config.ZoneConfigService;
@@ -18,6 +19,8 @@ import de.fleaqx.minecraftDungeons.runtime.VirtualHealthService;
 import de.fleaqx.minecraftDungeons.sword.SwordService;
 import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import de.fleaqx.minecraftDungeons.sword.ui.SwordMenuService;
+import de.fleaqx.minecraftDungeons.rebirth.RebirthService;
+import de.fleaqx.minecraftDungeons.rebirth.ui.RebirthMenuService;
 import de.fleaqx.minecraftDungeons.ui.ZoneMenuService;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -38,6 +41,8 @@ public final class MinecraftDungeons extends JavaPlugin {
     private SwordPerkService swordPerkService;
     private CompanionService companionService;
     private CompanionMenuService companionMenuService;
+    private RebirthService rebirthService;
+    private RebirthMenuService rebirthMenuService;
 
     @Override
     public void onEnable() {
@@ -73,6 +78,10 @@ public final class MinecraftDungeons extends JavaPlugin {
         this.companionMenuService = new CompanionMenuService(companionService, dungeonService);
         dungeonService.setCompanionService(companionService);
 
+        this.rebirthService = new RebirthService(this, profileService, dungeonService);
+        this.rebirthMenuService = new RebirthMenuService(rebirthService, dungeonService);
+        dungeonService.setRebirthService(rebirthService);
+
         this.autoAttackService = new AutoAttackService(
                 this,
                 dungeonService,
@@ -84,7 +93,7 @@ public final class MinecraftDungeons extends JavaPlugin {
         dungeonService.start();
         autoAttackService.start();
         getServer().getPluginManager().registerEvents(
-                new DungeonListener(dungeonService, virtualHealthService, zoneMenuService, autoAttackService, swordService, swordMenuService, companionService, companionMenuService),
+                new DungeonListener(dungeonService, virtualHealthService, zoneMenuService, autoAttackService, swordService, swordMenuService, companionService, companionMenuService, rebirthMenuService),
                 this
         );
 
@@ -100,6 +109,11 @@ public final class MinecraftDungeons extends JavaPlugin {
             DungeonCommand dungeonCommand = new DungeonCommand(this, dungeonService, enchantService, swordPerkService, swordService, companionService, companionMenuService);
             dungeon.setExecutor(dungeonCommand);
             dungeon.setTabCompleter(dungeonCommand);
+        }
+
+        PluginCommand rebirth = getCommand("rebirth");
+        if (rebirth != null) {
+            rebirth.setExecutor(new RebirthCommand(rebirthMenuService));
         }
 
         PluginCommand pay = getCommand("pay");
