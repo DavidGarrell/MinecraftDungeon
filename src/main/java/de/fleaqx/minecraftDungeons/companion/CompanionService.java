@@ -5,6 +5,7 @@ import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.profile.ProfileService;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.ui.HeadItemFactory;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -773,7 +774,7 @@ public class CompanionService {
                 return false;
             }
             for (UUID textId : textIds) {
-                Entity entity = anchor.getWorld().getEntity(textId);
+                Entity entity = Bukkit.getEntity(textId);
                 if (entity == null || !entity.isValid()) {
                     return false;
                 }
@@ -797,7 +798,7 @@ public class CompanionService {
             if (id == null || anchor.getWorld() == null) {
                 return;
             }
-            Entity entity = anchor.getWorld().getEntity(id);
+            Entity entity = Bukkit.getEntity(id);
             if (entity != null && entity.isValid()) {
                 entity.remove();
             }
@@ -927,4 +928,3 @@ public class CompanionService {
     public record EggPoint(String zoneId, int stage, Location location) {
     }
 }
-
