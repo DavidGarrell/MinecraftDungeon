@@ -28,6 +28,7 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -487,7 +488,7 @@ public class DungeonService {
             if (i == 0 && canUsePreferredMob) {
                 chosen = applyStageScaling(preferredMob, zone, session.currentStage());
             } else {
-                MobEntry weighted = pickWeighted(candidateMobs, zone, session.currentStage());
+                MobEntry weighted = pickWeighted(candidateMobs);
                 chosen = applyStageScaling(weighted, zone, session.currentStage());
             }
 
@@ -507,17 +508,56 @@ public class DungeonService {
         spawnAfkMobForPlayer(player, session);
     }
 
-    private MobEntry pickWeighted(List<MobEntry> mobs, ZoneDefinition zone, int stageIndex) {
-        int globalStage = globalStage(zone, stageIndex);
-        long total = 0L;
-        List<Long> effectiveWeights = new java.util.ArrayList<>(mobs.size());
+    private MobEntry pickWeighted(List<MobEntry> mobs) {
+        if (mobs.isEmpty()) {
+            throw new IllegalArgumentException("Mob list cannot be empty");
+        }
 
+        List<MobEntry> bosses = mobs.stream().filter(mob -> mob.rarity() == de.fleaqx.minecraftDungeons.model.MobRarity.BOSS).toList();
+        if (!bosses.isEmpty()) {
+            return pickByConfiguredWeight(bosses);
+        }
+
+        Map<de.fleaqx.minecraftDungeons.model.MobRarity, List<MobEntry>> byRarity = new EnumMap<>(de.fleaqx.minecraftDungeons.model.MobRarity.class);
         for (MobEntry mob : mobs) {
-            long baseWeight = Math.max(1, mob.weight());
-            double boost = rarityWeightBoost(mob, globalStage);
-            long effective = Math.max(1L, (long) Math.floor(baseWeight * boost));
-            effectiveWeights.add(effective);
-            total += effective;
+            byRarity.computeIfAbsent(mob.rarity(), ignored -> new java.util.ArrayList<>()).add(mob);
+        }
+
+        double roll = ThreadLocalRandom.current().nextDouble(100.0D);
+        de.fleaqx.minecraftDungeons.model.MobRarity target;
+        if (roll < 10.0D) {
+            target = de.fleaqx.minecraftDungeons.model.MobRarity.LEGENDARY;
+        } else if (roll < 25.0D) {
+            target = de.fleaqx.minecraftDungeons.model.MobRarity.EPIC;
+        } else if (roll < 50.0D) {
+            target = de.fleaqx.minecraftDungeons.model.MobRarity.RARE;
+        } else {
+            target = de.fleaqx.minecraftDungeons.model.MobRarity.COMMON;
+        }
+
+        List<MobEntry> targetPool = byRarity.get(target);
+        if (targetPool != null && !targetPool.isEmpty()) {
+            return pickByConfiguredWeight(targetPool);
+        }
+
+        for (de.fleaqx.minecraftDungeons.model.MobRarity fallback : List.of(
+                de.fleaqx.minecraftDungeons.model.MobRarity.COMMON,
+                de.fleaqx.minecraftDungeons.model.MobRarity.RARE,
+                de.fleaqx.minecraftDungeons.model.MobRarity.EPIC,
+                de.fleaqx.minecraftDungeons.model.MobRarity.LEGENDARY)) {
+            List<MobEntry> pool = byRarity.get(fallback);
+            if (pool != null && !pool.isEmpty()) {
+                return pickByConfiguredWeight(pool);
+            }
+        }
+
+        return pickByConfiguredWeight(mobs);
+    }
+
+    private MobEntry pickByConfiguredWeight(List<MobEntry> mobs) {
+        long total = 0L;
+        for (MobEntry mob : mobs) {
+            total += Math.max(1, mob.weight());
         }
 
         if (total <= 0L) {
@@ -526,24 +566,13 @@ public class DungeonService {
 
         long roll = ThreadLocalRandom.current().nextLong(total);
         long cumulative = 0L;
-        for (int i = 0; i < mobs.size(); i++) {
-            cumulative += effectiveWeights.get(i);
+        for (MobEntry mob : mobs) {
+            cumulative += Math.max(1, mob.weight());
             if (roll < cumulative) {
-                return mobs.get(i);
+                return mob;
             }
         }
         return mobs.get(mobs.size() - 1);
-    }
-
-    private double rarityWeightBoost(MobEntry mob, int globalStage) {
-        int progress = Math.max(0, globalStage - 1);
-        return switch (mob.rarity()) {
-            case COMMON -> Math.max(0.10D, 1.0D - (progress * 0.03D));
-            case RARE -> 1.0D + (progress * 0.05D);
-            case EPIC -> 1.0D + (progress * 0.08D);
-            case LEGENDARY -> 1.0D + (progress * 0.12D);
-            case BOSS -> 1.0D + (progress * 0.16D);
-        };
     }
 
     private MobEntry applyStageScaling(MobEntry mob, ZoneDefinition zone, int stageIndex) {
@@ -626,7 +655,7 @@ public class DungeonService {
         }
 
         List<MobEntry> candidateMobs = stage.mobs();
-        MobEntry weighted = pickWeighted(candidateMobs, zone, session.currentStage());
+        MobEntry weighted = pickWeighted(candidateMobs);
         MobEntry chosen = applyStageScaling(weighted, zone, session.currentStage());
         Location lastLocation = lastCombatLocations.get(player.getUniqueId());
 

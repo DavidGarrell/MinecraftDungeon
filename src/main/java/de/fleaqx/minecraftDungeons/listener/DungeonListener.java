@@ -70,7 +70,7 @@ public class DungeonListener implements Listener {
         companionService.ensureControllerInSlot(event.getPlayer());
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onDamageManagedEntity(EntityDamageByEntityEvent event) {
         Entity target = event.getEntity();
         if (!(target instanceof LivingEntity living) || !dungeonService.isManagedMob(target.getUniqueId())) {
@@ -94,7 +94,7 @@ public class DungeonListener implements Listener {
         autoAttackService.lockOrToggleTarget(damager, living, damage);
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onOtherDamage(EntityDamageEvent event) {
         if (!dungeonService.isManagedMob(event.getEntity().getUniqueId())) {
             return;
