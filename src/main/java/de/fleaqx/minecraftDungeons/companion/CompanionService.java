@@ -696,7 +696,7 @@ public class CompanionService {
                 stage = 1;
             }
         }
-        long price = costPerDraw(stage);
+        long price = costPerDraw(Math.max(1, stage));
 
         Location blockLocation = baseLocation.clone();
         clearTeleportedEggs(blockLocation);
@@ -705,7 +705,7 @@ public class CompanionService {
         List<UUID> textIds = new ArrayList<>();
         List<String> lines = List.of(
                 ChatColor.GREEN + "Zone Egg",
-                ChatColor.YELLOW + "[" + capitalize(zoneId) + " Stage " + stage + "]",
+                ChatColor.YELLOW + "[" + capitalize(zoneId) + " " + (stage > 0 ? "Stage " + stage : "Auto Stage") + "]",
                 ChatColor.WHITE + "Purchase a Companion that boosts",
                 ChatColor.WHITE + "the amount of money you gain!",
                 ChatColor.GREEN + "| Price: " + price + " Money",

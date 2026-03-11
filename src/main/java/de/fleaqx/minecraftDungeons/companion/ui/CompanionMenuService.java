@@ -58,7 +58,7 @@ public class CompanionMenuService {
         Optional<CompanionService.EggPoint> nearbyEgg = companionService.nearbyEgg(player, 10.0D);
         if (nearbyEgg.isPresent()) {
             activeZoneId = nearbyEgg.get().zoneId();
-            activeStage = Math.max(1, nearbyEgg.get().stage());
+            activeStage = resolveStageForZone(player, activeZoneId, nearbyEgg.get().stage());
         } else {
             Optional<DungeonService.PlayerZoneContext> zoneContext = dungeonService.currentZoneContext(player);
             if (zoneContext.isPresent()) {
@@ -156,6 +156,34 @@ public class CompanionMenuService {
                 new HashSet<>(), null, awaitingBulkConfirm, pendingMode, pendingValue));
     }
 
+
+    private int resolveStageForZone(Player player, String zoneId, int configuredStage) {
+        if (zoneId == null || zoneId.isBlank()) {
+            return Math.max(1, configuredStage);
+        }
+
+        String normalizedZone = zoneId.toLowerCase(Locale.ROOT);
+        if (configuredStage > 0) {
+            return Math.max(1, configuredStage);
+        }
+
+        Optional<DungeonService.PlayerZoneContext> zoneContext = dungeonService.currentZoneContext(player);
+        if (zoneContext.isPresent() && zoneContext.get().zoneId().equalsIgnoreCase(normalizedZone)) {
+            return Math.max(1, zoneContext.get().stage());
+        }
+
+        return Math.max(1, dungeonService.selectedStage(player, normalizedZone));
+    }
+
+    public void openEggMenuAutoStage(Player player, String zoneId) {
+        if (zoneId == null || zoneId.isBlank()) {
+            player.sendMessage(ChatColor.RED + "No zone selected.");
+            return;
+        }
+
+        String normalizedZone = zoneId.toLowerCase(Locale.ROOT);
+        openEggMenu(player, normalizedZone, resolveStageForZone(player, normalizedZone, 0));
+    }
     public void openEggMenu(Player player, String zoneId, int stage) {
         if (zoneId == null || zoneId.isBlank()) {
             return;

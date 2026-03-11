@@ -409,8 +409,8 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleCompanion(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion setlocation <zoneId> <stage>");
-            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion egg <zoneId> <stage> [player]");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion setlocation <zoneId>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion egg <zoneId> [stage] [player]");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon companion ui [player]");
             return true;
         }
@@ -425,19 +425,12 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(ChatColor.RED + "No permission.");
                     return true;
                 }
-                if (args.length < 4) {
-                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon companion setlocation <zoneId> <stage>");
+                if (args.length < 3) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon companion setlocation <zoneId>");
                     return true;
                 }
-                int stage;
-                try {
-                    stage = Integer.parseInt(args[3]);
-                } catch (Exception exception) {
-                    sender.sendMessage(ChatColor.RED + "Invalid stage.");
-                    return true;
-                }
-                companionService.setEggLocation(args[2], stage, player.getLocation());
-                sender.sendMessage(ChatColor.GREEN + "Companion egg location set for " + args[2] + " stage " + stage + ".");
+                companionService.setEggLocation(args[2], 0, player.getLocation());
+                sender.sendMessage(ChatColor.GREEN + "Companion egg location set for zone " + args[2] + " (stage auto).");
                 return true;
             }
             case "egg" -> {
@@ -445,30 +438,42 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(ChatColor.RED + "Players only.");
                     return true;
                 }
-                if (args.length < 4) {
-                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon companion egg <zoneId> <stage> [player]");
+                if (args.length < 3) {
+                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon companion egg <zoneId> [stage] [player]");
                     return true;
                 }
+
+                String zoneId = args[2];
+                Integer stage = null;
                 Player target = self;
-                if (args.length >= 5) {
+                int playerArgIndex = -1;
+
+                if (args.length >= 4) {
+                    try {
+                        stage = Integer.parseInt(args[3]);
+                        playerArgIndex = 4;
+                    } catch (Exception ignored) {
+                        playerArgIndex = 3;
+                    }
+                }
+
+                if (playerArgIndex > 0 && args.length > playerArgIndex) {
                     if (!sender.hasPermission("minecraftdungeons.admin")) {
                         sender.sendMessage(ChatColor.RED + "No permission.");
                         return true;
                     }
-                    target = Bukkit.getPlayerExact(args[4]);
+                    target = Bukkit.getPlayerExact(args[playerArgIndex]);
                     if (target == null) {
                         sender.sendMessage(ChatColor.RED + "Player not found.");
                         return true;
                     }
                 }
-                int stage;
-                try {
-                    stage = Integer.parseInt(args[3]);
-                } catch (Exception exception) {
-                    sender.sendMessage(ChatColor.RED + "Invalid stage.");
-                    return true;
+
+                if (stage != null) {
+                    companionMenuService.openEggMenu(target, zoneId, stage);
+                } else {
+                    companionMenuService.openEggMenuAutoStage(target, zoneId);
                 }
-                companionMenuService.openEggMenu(target, args[2], stage);
                 return true;
             }
             case "ui" -> {

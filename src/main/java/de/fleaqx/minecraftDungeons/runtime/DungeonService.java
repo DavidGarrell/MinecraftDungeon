@@ -513,42 +513,11 @@ public class DungeonService {
             throw new IllegalArgumentException("Mob list cannot be empty");
         }
 
-        List<MobEntry> bosses = mobs.stream().filter(mob -> mob.rarity() == de.fleaqx.minecraftDungeons.model.MobRarity.BOSS).toList();
-        if (!bosses.isEmpty()) {
-            return pickByConfiguredWeight(bosses);
-        }
-
-        Map<de.fleaqx.minecraftDungeons.model.MobRarity, List<MobEntry>> byRarity = new EnumMap<>(de.fleaqx.minecraftDungeons.model.MobRarity.class);
-        for (MobEntry mob : mobs) {
-            byRarity.computeIfAbsent(mob.rarity(), ignored -> new java.util.ArrayList<>()).add(mob);
-        }
-
-        double roll = ThreadLocalRandom.current().nextDouble(100.0D);
-        de.fleaqx.minecraftDungeons.model.MobRarity target;
-        if (roll < 10.0D) {
-            target = de.fleaqx.minecraftDungeons.model.MobRarity.LEGENDARY;
-        } else if (roll < 25.0D) {
-            target = de.fleaqx.minecraftDungeons.model.MobRarity.EPIC;
-        } else if (roll < 50.0D) {
-            target = de.fleaqx.minecraftDungeons.model.MobRarity.RARE;
-        } else {
-            target = de.fleaqx.minecraftDungeons.model.MobRarity.COMMON;
-        }
-
-        List<MobEntry> targetPool = byRarity.get(target);
-        if (targetPool != null && !targetPool.isEmpty()) {
-            return pickByConfiguredWeight(targetPool);
-        }
-
-        for (de.fleaqx.minecraftDungeons.model.MobRarity fallback : List.of(
-                de.fleaqx.minecraftDungeons.model.MobRarity.COMMON,
-                de.fleaqx.minecraftDungeons.model.MobRarity.RARE,
-                de.fleaqx.minecraftDungeons.model.MobRarity.EPIC,
-                de.fleaqx.minecraftDungeons.model.MobRarity.LEGENDARY)) {
-            List<MobEntry> pool = byRarity.get(fallback);
-            if (pool != null && !pool.isEmpty()) {
-                return pickByConfiguredWeight(pool);
-            }
+        List<MobEntry> nonBossPool = mobs.stream()
+                .filter(mob -> mob.rarity() != de.fleaqx.minecraftDungeons.model.MobRarity.BOSS)
+                .toList();
+        if (!nonBossPool.isEmpty()) {
+            return pickByConfiguredWeight(nonBossPool);
         }
 
         return pickByConfiguredWeight(mobs);
@@ -852,4 +821,3 @@ public class DungeonService {
     public record PlayerZoneContext(String zoneId, int stage) {
     }
 }
-
