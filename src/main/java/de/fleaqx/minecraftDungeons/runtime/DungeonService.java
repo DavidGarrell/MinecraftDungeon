@@ -506,14 +506,61 @@ public class DungeonService {
             throw new IllegalArgumentException("Mob list cannot be empty");
         }
 
-        List<MobEntry> nonBossPool = mobs.stream()
-                .filter(mob -> mob.rarity() != de.fleaqx.minecraftDungeons.model.MobRarity.BOSS)
-                .toList();
-        if (!nonBossPool.isEmpty()) {
-            return pickByConfiguredWeight(nonBossPool);
+        Map<de.fleaqx.minecraftDungeons.model.MobRarity, List<MobEntry>> byRarity = new EnumMap<>(de.fleaqx.minecraftDungeons.model.MobRarity.class);
+        for (MobEntry mob : mobs) {
+            byRarity.computeIfAbsent(mob.rarity(), ignored -> new ArrayList<>()).add(mob);
         }
 
-        return pickByConfiguredWeight(mobs);
+        List<MobEntry> nonBossPool = new ArrayList<>();
+        for (Map.Entry<de.fleaqx.minecraftDungeons.model.MobRarity, List<MobEntry>> entry : byRarity.entrySet()) {
+            if (entry.getKey() != de.fleaqx.minecraftDungeons.model.MobRarity.BOSS) {
+                nonBossPool.addAll(entry.getValue());
+            }
+        }
+        if (nonBossPool.isEmpty()) {
+            return pickByConfiguredWeight(mobs);
+        }
+
+        double roll = ThreadLocalRandom.current().nextDouble(100.0D);
+        List<de.fleaqx.minecraftDungeons.model.MobRarity> preferredOrder;
+        if (roll < 10.0D) {
+            preferredOrder = List.of(
+                    de.fleaqx.minecraftDungeons.model.MobRarity.LEGENDARY,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.EPIC,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.RARE,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.COMMON
+            );
+        } else if (roll < 30.0D) {
+            preferredOrder = List.of(
+                    de.fleaqx.minecraftDungeons.model.MobRarity.EPIC,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.RARE,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.LEGENDARY,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.COMMON
+            );
+        } else if (roll < 60.0D) {
+            preferredOrder = List.of(
+                    de.fleaqx.minecraftDungeons.model.MobRarity.RARE,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.COMMON,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.EPIC,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.LEGENDARY
+            );
+        } else {
+            preferredOrder = List.of(
+                    de.fleaqx.minecraftDungeons.model.MobRarity.COMMON,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.RARE,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.EPIC,
+                    de.fleaqx.minecraftDungeons.model.MobRarity.LEGENDARY
+            );
+        }
+
+        for (de.fleaqx.minecraftDungeons.model.MobRarity rarity : preferredOrder) {
+            List<MobEntry> pool = byRarity.getOrDefault(rarity, List.of());
+            if (!pool.isEmpty()) {
+                return pickByConfiguredWeight(pool);
+            }
+        }
+
+        return pickByConfiguredWeight(nonBossPool);
     }
 
     private MobEntry pickByConfiguredWeight(List<MobEntry> mobs) {
