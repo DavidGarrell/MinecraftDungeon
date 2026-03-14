@@ -112,19 +112,40 @@ public class CompanionMenuService {
                 new HashSet<>(selectedIds), awaitingDeleteConfirm, awaitingBulkConfirm, pendingBulkMode, pendingBulkValue));
     }
 
+    private void openBulkDeleteModeMenu(Player player) {
+        Inventory inv = Bukkit.createInventory(player, 27, "Bulk Delete");
+        inv.setItem(11, item(Material.PAPER, ChatColor.YELLOW + "Delete by Rarity", List.of(
+                ChatColor.GRAY + "Open rarity filters.",
+                ChatColor.RED + "Equipped companions are protected."
+        )));
+        inv.setItem(15, item(Material.MAP, ChatColor.GREEN + "Delete by Zone", List.of(
+                ChatColor.GRAY + "Open zone filters.",
+                ChatColor.RED + "Equipped companions are protected."
+        )));
+        inv.setItem(22, item(Material.ARROW, ChatColor.YELLOW + "Back", List.of(ChatColor.GRAY + "Return to companions")));
+        fill(inv);
+        player.openInventory(inv);
+        contexts.put(player.getUniqueId(), new MenuContext("bulk-delete-mode", null, 1, 1, false,
+                new HashSet<>(), null, null, null, null));
+    }
+
     private void openBulkDeleteMenu(Player player, int page, String awaitingBulkConfirm, BulkMode pendingMode, String pendingValue) {
         Inventory inv = Bukkit.createInventory(player, 54, "Bulk Delete Companions");
 
         List<String> options = new ArrayList<>();
-        for (CompanionService.CompanionRarity rarity : CompanionService.CompanionRarity.values()) {
-            options.add("RARITY:" + rarity.name());
+        if (pendingMode == null || pendingMode == BulkMode.RARITY) {
+            for (CompanionService.CompanionRarity rarity : CompanionService.CompanionRarity.values()) {
+                options.add("RARITY:" + rarity.name());
+            }
         }
-        Set<String> zones = new TreeSet<>();
-        for (CompanionService.OwnedCompanion companion : companionService.owned(player)) {
-            zones.add(companion.zoneId().toLowerCase(Locale.ROOT));
-        }
-        for (String zone : zones) {
-            options.add("ZONE:" + zone);
+        if (pendingMode == null || pendingMode == BulkMode.ZONE) {
+            Set<String> zones = new TreeSet<>();
+            for (CompanionService.OwnedCompanion companion : companionService.owned(player)) {
+                zones.add(companion.zoneId().toLowerCase(Locale.ROOT));
+            }
+            for (String zone : zones) {
+                options.add("ZONE:" + zone);
+            }
         }
 
         int pages = Math.max(1, (int) Math.ceil((double) options.size() / PAGE_SIZE));
@@ -212,16 +233,16 @@ public class CompanionMenuService {
                 )
         ));
 
-        inv.setItem(4, item(Material.NETHER_STAR, ChatColor.AQUA + "Companion HUD", List.of(
+        inv.setItem(22, item(Material.NETHER_STAR, ChatColor.AQUA + "Companion HUD", List.of(
                 ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
                 ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + safeStage,
                 ChatColor.GRAY + "Price / Egg: " + ChatColor.GREEN + NumberFormat.compact(BigInteger.valueOf(price)) + " Money"
         )));
 
-        int[] previewSlots = new int[]{20, 22, 24, 30, 32};
-        List<CompanionService.CompanionDefinition> previews = companionService.previewCompanions(zoneId);
-        for (int i = 0; i < Math.min(previews.size(), previewSlots.length); i++) {
-            inv.setItem(previewSlots[i], companionPreview(previews.get(i), zoneId, safeStage));
+        int[] previewSlots = new int[]{19, 20, 21, 23, 24};
+        CompanionService.CompanionRarity[] rarities = CompanionService.CompanionRarity.values();
+        for (int i = 0; i < Math.min(rarities.length, previewSlots.length); i++) {
+            inv.setItem(previewSlots[i], companionPreview(zoneId, safeStage, rarities[i]));
         }
 
         inv.setItem(36, toggleAnimationsItem());
@@ -284,6 +305,22 @@ public class CompanionMenuService {
             return true;
         }
 
+        if (ctx.menu().equals("bulk-delete-mode")) {
+            if (slot == 22) {
+                openCompanions(player);
+                return true;
+            }
+            if (slot == 11) {
+                openBulkDeleteMenu(player, 1, null, BulkMode.RARITY, null);
+                return true;
+            }
+            if (slot == 15) {
+                openBulkDeleteMenu(player, 1, null, BulkMode.ZONE, null);
+                return true;
+            }
+            return true;
+        }
+
         if (ctx.menu().equals("bulk-delete")) {
             if (slot == 45) {
                 openCompanions(player);
@@ -303,7 +340,7 @@ public class CompanionMenuService {
                     player.sendMessage(ChatColor.RED + "Deleted " + deleted + " companions.");
                     openCompanions(player);
                 } else {
-                    player.sendMessage(ChatColor.YELLOW + "Select a rarity or zone first.");
+                    player.sendMessage(ChatColor.YELLOW + "Select a filter first.");
                 }
                 return true;
             }
@@ -352,7 +389,7 @@ public class CompanionMenuService {
             return true;
         }
         if (slot == 46) {
-            openBulkDeleteMenu(player, 1, null, null, null);
+            openBulkDeleteModeMenu(player);
             return true;
         }
         if (slot == 45) {
@@ -455,12 +492,20 @@ public class CompanionMenuService {
                 ));
     }
 
-    private ItemStack companionPreview(CompanionService.CompanionDefinition definition, String zoneId, int stage) {
-        String rarity = definition.rarity().color() + capitalize(definition.rarity().name());
-        return item(definition.previewMaterial(), definition.rarity().color() + definition.name(),
+    private ItemStack companionPreview(String zoneId, int stage, CompanionService.CompanionRarity rarity) {
+        double multiplier = companionService.previewMultiplier(zoneId, stage, rarity);
+        String rarityName = capitalize(rarity.name());
+        Material icon = switch (rarity) {
+            case COMMON -> Material.CHICKEN_SPAWN_EGG;
+            case RARE -> Material.PIG_SPAWN_EGG;
+            case EPIC -> Material.COW_SPAWN_EGG;
+            case LEGENDARY -> Material.WOLF_SPAWN_EGG;
+            case MYTHIC -> Material.DRAGON_EGG;
+        };
+        return item(icon, rarity.color() + rarityName,
                 List.of(
-                        ChatColor.GRAY + "Rarity: " + rarity,
-                        ChatColor.GRAY + "Multiplier: " + ChatColor.GREEN + String.format(Locale.US, "%.3fx", definition.baseMultiplier()),
+                        ChatColor.GRAY + "Rarity Buff: " + ChatColor.GREEN + String.format(Locale.US, "%.2fx", multiplier),
+                        ChatColor.GRAY + "Mutation buffs apply on top.",
                         " ",
                         ChatColor.YELLOW + "[Zone " + capitalize(zoneId) + " Stage " + stage + "]"
                 ));
