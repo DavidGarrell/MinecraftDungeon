@@ -19,6 +19,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityCombustEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -100,6 +101,14 @@ public class DungeonListener implements Listener {
             return;
         }
         if (!dungeonService.onlyPlayerDamageManagedMobs() && event.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK) {
+            return;
+        }
+        event.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onManagedMobCombust(EntityCombustEvent event) {
+        if (!dungeonService.isManagedMob(event.getEntity().getUniqueId())) {
             return;
         }
         event.setCancelled(true);

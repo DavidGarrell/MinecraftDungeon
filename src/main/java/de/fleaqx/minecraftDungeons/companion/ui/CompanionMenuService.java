@@ -450,14 +450,21 @@ public class CompanionMenuService {
             case LEGENDARY -> "http://textures.minecraft.net/texture/71aeb6c89e0ca9f33fbd583a14bcbb157ccd44fcbb40f19a1e0122972a97f6e8";
             case MYTHIC -> "http://textures.minecraft.net/texture/e48f8e72f5f8dcfc8fd7d7f9e77a4fbcff47aa8477f0348ee53d86fac261cb47";
         };
+        ChatColor infoColor = companion.rarity().color();
         ItemStack item = HeadItemFactory.head(texture,
                 companion.rarity().color() + companion.name(),
                 List.of(
-                        ChatColor.GRAY + "Rarity: " + companion.rarity().color() + companion.rarity().name(),
-                        ChatColor.GRAY + "Mutation: " + companion.mutation().color() + companion.mutation().name(),
-                        ChatColor.GRAY + "Zone Stage: " + ChatColor.YELLOW + companion.zoneId() + " " + companion.stage(),
-                        ChatColor.GRAY + "Multiplier: " + ChatColor.GREEN + companion.multiplier() + "x",
-                        selectedForDelete ? ChatColor.RED + "Selected for deletion" : (equipped ? ChatColor.GREEN + "Equipped" : ChatColor.YELLOW + "Click to equip / unequip")
+                        ChatColor.DARK_GRAY + "STORED COMPANION",
+                        " ",
+                        infoColor + "Information",
+                        infoColor + "▏ " + ChatColor.WHITE + "Rarity: " + companion.rarity().color() + displayRarity(companion.rarity()),
+                        infoColor + "▏ " + ChatColor.WHITE + "Variant: " + companion.mutation().color() + displayMutation(companion.mutation()),
+                        infoColor + "▏ " + ChatColor.WHITE + "Source: " + ChatColor.GREEN + "Zone",
+                        infoColor + "▏ " + ChatColor.WHITE + "Multiplier: " + ChatColor.GREEN + String.format(Locale.US, "%.3f", companion.multiplier()) + "x Money",
+                        " ",
+                        infoColor + "[" + ChatColor.GREEN + "Zone " + capitalize(companion.zoneId()) + " Stage " + companion.stage() + infoColor + "]",
+                        " ",
+                        selectedForDelete ? ChatColor.RED + "Selected for deletion" : (equipped ? ChatColor.GREEN + "Activated" : ChatColor.GREEN + "Click to activate")
                 ));
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
@@ -467,6 +474,25 @@ public class CompanionMenuService {
             item.setItemMeta(meta);
         }
         return item;
+    }
+
+    private String displayRarity(CompanionService.CompanionRarity rarity) {
+        return switch (rarity) {
+            case COMMON -> "Common";
+            case RARE -> "Rare";
+            case EPIC -> "Epic";
+            case LEGENDARY -> "Legendary";
+            case MYTHIC -> "Mythical";
+        };
+    }
+
+    private String displayMutation(CompanionService.Mutation mutation) {
+        return switch (mutation) {
+            case NORMAL -> "Normal";
+            case GOLD -> "Gold";
+            case RAINBOW -> "Rainbow";
+            case DARKMATTER -> "Dark Matter";
+        };
     }
 
     private ItemStack rollItem(int amount, long pricePerDraw) {
