@@ -301,8 +301,8 @@ public class DungeonService {
             return new AttackResult(true, false);
         }
 
-        giveRewards(player, result.mob().rewards());
-        String rewardText = ChatColor.GREEN + "+" + NumberFormat.compact(result.mob().rewards().money()) + " $";
+        CurrencyBundle grantedRewards = giveRewards(player, result.mob().rewards());
+        String rewardText = ChatColor.GREEN + "" + ChatColor.BOLD + "+" + NumberFormat.compact(grantedRewards.money()) + " $";
         damageIndicatorService.spawnReward(player, entity, rewardText);
 
         PlayerDungeonSession session = sessions.get(player.getUniqueId());
@@ -764,7 +764,7 @@ public class DungeonService {
         player.sendMessage(formatMessage("messages.zone-locked", "&cZone locked. Price: {price}", Map.of("{price}", zone.unlockPrice().toString())));
     }
 
-    private void giveRewards(Player player, CurrencyBundle rewards) {
+    private CurrencyBundle giveRewards(Player player, CurrencyBundle rewards) {
         PlayerProfile profile = profile(player);
         java.math.BigInteger money = rewards.money();
         java.math.BigInteger souls = rewards.souls();
@@ -790,10 +790,14 @@ public class DungeonService {
             money = scaleByMultiplier(money, rebirthService.moneyMultiplier(player));
         }
 
-        profile.add(CurrencyType.MONEY, money);
-        profile.add(CurrencyType.SOULS, souls);
-        profile.add(CurrencyType.ESSENCE, essence);
-        profile.add(CurrencyType.SHARDS, rewards.shards());
+        CurrencyBundle grantedRewards = new CurrencyBundle(money, souls, essence, rewards.shards());
+
+        profile.add(CurrencyType.MONEY, grantedRewards.money());
+        profile.add(CurrencyType.SOULS, grantedRewards.souls());
+        profile.add(CurrencyType.ESSENCE, grantedRewards.essence());
+        profile.add(CurrencyType.SHARDS, grantedRewards.shards());
+
+        return grantedRewards;
     }
 
 
