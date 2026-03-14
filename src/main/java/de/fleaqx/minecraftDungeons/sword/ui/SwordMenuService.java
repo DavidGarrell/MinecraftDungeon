@@ -62,17 +62,20 @@ public class SwordMenuService {
         int maxPage = maxPageForView(view);
         int safePage = Math.max(0, Math.min(page, maxPage));
 
-        inv.setItem(2, item(Material.NETHER_STAR,
-                (VIEW_SKINS.equals(view) ? ChatColor.GREEN : ChatColor.LIGHT_PURPLE) + "Skins" + (VIEW_SKINS.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
-                List.of(ChatColor.GRAY + "Klicke um Skins anzuzeigen.")));
-        inv.setItem(4, item(Material.BLAZE_POWDER,
+        inv.setItem(3, item(Material.BLAZE_POWDER,
                 (VIEW_SOULS.equals(view) ? ChatColor.GREEN : ChatColor.GOLD) + "Souls Enchants" + (VIEW_SOULS.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
-                List.of(ChatColor.GRAY + "Klicke um Soul Enchants anzuzeigen.")));
-        inv.setItem(6, item(Material.DIAMOND,
+                List.of(ChatColor.GRAY + "Use Souls to upgrade your enchants.", "", ChatColor.YELLOW + "Click to open")));
+        inv.setItem(4, item(Material.DIAMOND,
                 (VIEW_ESSENCE.equals(view) ? ChatColor.GREEN : ChatColor.AQUA) + "Essence Enchants" + (VIEW_ESSENCE.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
-                List.of(ChatColor.GRAY + "Klicke um Essence Enchants anzuzeigen.")));
-        inv.setItem(8, item(Material.BOOK, ChatColor.AQUA + "Perks",
+                List.of(ChatColor.GRAY + "Use Essence for special upgrades.", "", ChatColor.YELLOW + "Click to open")));
+        inv.setItem(5, item(Material.NETHER_STAR,
+                (VIEW_SKINS.equals(view) ? ChatColor.GREEN : ChatColor.LIGHT_PURPLE) + "Sword Skins" + (VIEW_SKINS.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
+                List.of(ChatColor.GRAY + "Choose and upgrade your sword.", "", ChatColor.YELLOW + "Click to open")));
+
+        inv.setItem(46, item(Material.BOOK, ChatColor.AQUA + "Perks",
                 List.of(ChatColor.GRAY + "Perks act as permanent multipliers", ChatColor.GRAY + "for your sword.", ChatColor.AQUA + "Click to view perks")));
+        inv.setItem(47, item(Material.NETHERITE_SWORD, ChatColor.GOLD + "Sword Button",
+                List.of(ChatColor.GRAY + "Open sword skins & upgrades.", ChatColor.YELLOW + "Click to open.")));
 
         inv.setItem(49, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close this menu.")));
         if (safePage > 0) {
@@ -148,23 +151,36 @@ public class SwordMenuService {
             EnchantDefinition def = defs.get(index);
             int level = enchantService.enchantLevel(player, def.id());
             boolean maxed = level >= def.maxLevel();
+            boolean unlocked = enchantService.toolLevel(player) >= def.requiredToolLevel();
+            double chance = enchantService.activationChance(player, def);
 
             List<String> lore = new ArrayList<>();
+            lore.add(ChatColor.DARK_GRAY + "Activation Chance: " + ChatColor.GRAY + chanceWithOdds(chance));
+            lore.add(" ");
+            lore.add(ChatColor.GREEN + "Description");
             for (String line : def.description()) {
-                lore.add(ChatColor.GRAY + line);
+                lore.add(ChatColor.DARK_GREEN + "| " + ChatColor.GRAY + line);
             }
             lore.add(" ");
-            lore.add(ChatColor.AQUA + "Type: " + ChatColor.WHITE + capitalize(def.category().name()));
+            lore.add(ChatColor.GOLD + "Statistics");
+            lore.add(ChatColor.GOLD + "| " + ChatColor.GRAY + "Type: " + ChatColor.WHITE + capitalize(def.category().name()));
+            lore.add(ChatColor.GOLD + "| " + ChatColor.GRAY + "Level: " + ChatColor.YELLOW + level + ChatColor.GRAY + "/" + ChatColor.RED + def.maxLevel());
+            lore.add(ChatColor.GOLD + "| " + ChatColor.GRAY + "Tool Unlock: " + ChatColor.YELLOW + "Level " + def.requiredToolLevel());
+            lore.add(ChatColor.GOLD + "| " + ChatColor.GRAY + "Cost: " + ChatColor.YELLOW + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 1)) + " " + def.costCurrency().name());
             if (def.damageMultiplier() > 0.0D) {
-                lore.add(ChatColor.AQUA + "Damage: " + ChatColor.RED + String.format("%.1fx", def.damageMultiplier()));
+                lore.add(ChatColor.GOLD + "| " + ChatColor.GRAY + "Damage: " + ChatColor.RED + String.format("%.1fx", def.damageMultiplier()));
             }
-            lore.add(ChatColor.AQUA + "Information:");
-            lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Level: " + ChatColor.AQUA + level + ChatColor.DARK_GRAY + " / " + ChatColor.AQUA + def.maxLevel());
-            lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Base Activation Chance: " + ChatColor.RED + chanceWithOdds(def.baseChance()));
-            lore.add(ChatColor.DARK_AQUA + "| " + ChatColor.GRAY + "Your Activation Chance: " + ChatColor.RED + chanceWithOdds(enchantService.activationChance(player, def)));
-            lore.add(maxed ? ChatColor.GREEN + "ENCHANT MAXED" : ChatColor.YELLOW + "Click to open enchant menu");
+            lore.add(" ");
+            lore.add(ChatColor.YELLOW + "Upgrade");
+            if (maxed) {
+                lore.add(ChatColor.YELLOW + "| " + ChatColor.GREEN + "This enchant is maxed.");
+            } else if (unlocked) {
+                lore.add(ChatColor.YELLOW + "| " + ChatColor.GRAY + "Click to open upgrade menu.");
+            } else {
+                lore.add(ChatColor.YELLOW + "| " + ChatColor.RED + "Requires Tool Level " + def.requiredToolLevel() + ".");
+            }
 
-            inv.setItem(GRID_SLOTS[i], item(def.icon(), (maxed ? ChatColor.GREEN : ChatColor.AQUA) + def.displayName(), lore));
+            inv.setItem(GRID_SLOTS[i], item(def.icon(), (maxed ? ChatColor.GREEN : ChatColor.AQUA) + def.displayName() + ChatColor.WHITE + " Enchant", lore));
         }
     }
 
@@ -370,16 +386,16 @@ public class SwordMenuService {
         int slot = event.getSlot();
         switch (ctx.menu()) {
             case "main" -> {
-                if (slot == 2) {
-                    openMain(player, VIEW_SKINS, 0);
-                    return true;
-                }
-                if (slot == 4) {
+                if (slot == 3) {
                     openMain(player, VIEW_SOULS, 0);
                     return true;
                 }
-                if (slot == 6) {
+                if (slot == 4) {
                     openMain(player, VIEW_ESSENCE, 0);
+                    return true;
+                }
+                if (slot == 5 || slot == 47) {
+                    openMain(player, VIEW_SKINS, 0);
                     return true;
                 }
                 if (slot == 48) {
@@ -394,7 +410,7 @@ public class SwordMenuService {
                     player.closeInventory();
                     return true;
                 }
-                if (slot == 8) {
+                if (slot == 46) {
                     openPerks(player);
                     return true;
                 }
