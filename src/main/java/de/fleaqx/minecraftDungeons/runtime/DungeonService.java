@@ -231,12 +231,58 @@ public class DungeonService {
         return true;
     }
 
-    public int maxUpgradeZones(Player player) {
+    public int maxUpgradeStages(Player player) {
         int purchased = 0;
-        while (unlockNextZoneWithMoney(player)) {
+        while (unlockNextProgressionStep(player)) {
             purchased++;
         }
         return purchased;
+    }
+
+    private boolean unlockNextProgressionStep(Player player) {
+        PlayerProfile profile = profile(player);
+        List<ZoneDefinition> ordered = sortedZones();
+        if (ordered.isEmpty()) {
+            return false;
+        }
+
+        int unlockedZoneOrder = profile.unlockedZoneOrder();
+        for (ZoneDefinition zone : ordered) {
+            if (zone.order() > unlockedZoneOrder + 1) {
+                break;
+            }
+
+            if (zone.order() > unlockedZoneOrder) {
+                if (!profile.remove(CurrencyType.MONEY, zone.unlockPrice())) {
+                    return false;
+                }
+                profile.unlockedZoneOrder(zone.order());
+                profile.unlockedStage(zone.id(), 1);
+                profile.selectedStage(zone.id(), 1);
+                return true;
+            }
+
+            int unlockedStage = Math.max(1, profile.unlockedStage(zone.id()));
+            if (unlockedStage >= zone.totalStages()) {
+                continue;
+            }
+
+            int nextStage = unlockedStage + 1;
+            StageDefinition stageDefinition = zone.stageByIndex(nextStage);
+            if (stageDefinition == null) {
+                continue;
+            }
+
+            if (!profile.remove(CurrencyType.MONEY, stageDefinition.unlockPrice())) {
+                return false;
+            }
+
+            profile.unlockedStage(zone.id(), nextStage);
+            profile.selectedStage(zone.id(), nextStage);
+            return true;
+        }
+
+        return false;
     }
 
     public boolean unlockStage(Player player, ZoneDefinition zone, int stageIndex) {
@@ -715,6 +761,7 @@ public class DungeonService {
         entity.setRemoveWhenFarAway(false);
         entity.setCollidable(false);
         entity.setAI(false);
+        disableDaylightBurn(entity);
 
         if (entity.getAttribute(Attribute.GENERIC_SCALE) != null) {
             entity.getAttribute(Attribute.GENERIC_SCALE).setBaseValue(Math.max(0.1D, mob.scale()));
@@ -751,6 +798,14 @@ public class DungeonService {
 
     private boolean isAfkMob(String mobId) {
         return mobId != null && mobId.equalsIgnoreCase("afk_mob");
+    }
+
+    private void disableDaylightBurn(LivingEntity entity) {
+        try {
+            java.lang.reflect.Method method = entity.getClass().getMethod("setShouldBurnInDay", boolean.class);
+            method.invoke(entity, false);
+        } catch (ReflectiveOperationException ignored) {
+        }
     }
 
     private void sendLockedZoneMessage(Player player, ZoneDefinition zone) {

@@ -67,14 +67,12 @@ public class AutoAttackService {
         AutoAttackState existing = states.get(player.getUniqueId());
         if (existing != null && existing.targetId().equals(target.getUniqueId())) {
             stop(player.getUniqueId());
-            player.sendMessage("Auto attack paused.");
             return;
         }
 
         BigInteger damage = baseDamage.max(BigInteger.ONE);
         AutoAttackState state = new AutoAttackState(player.getUniqueId(), target.getUniqueId(), damage, now);
         states.put(player.getUniqueId(), state);
-        player.sendMessage("Auto attack started.");
     }
 
     public void stop(UUID playerId) {
@@ -114,7 +112,6 @@ public class AutoAttackService {
 
             if (!sameWorld(player, target) || player.getLocation().distanceSquared(target.getLocation()) > 25.0D) {
                 stop(state.playerId());
-                player.sendMessage("Auto attack stopped: too far away.");
                 continue;
             }
 

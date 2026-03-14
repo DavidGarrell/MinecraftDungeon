@@ -158,6 +158,15 @@ public class CompanionService {
         return pool(zoneId).previewCompanions();
     }
 
+    public double previewMultiplier(String zoneId, int stage, CompanionRarity rarity) {
+        CompanionPool pool = pool(zoneId);
+        CompanionDefinition definition = pool.companionsByRarity().getOrDefault(rarity, List.of()).stream().findFirst().orElse(defaultDefinition(rarity));
+        double stageFactor = Math.pow(stagePowerFactor, Math.max(0, stage - 1));
+        return BigDecimal.valueOf(definition.baseMultiplier() * stageFactor)
+                .setScale(2, RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
     public int maxEquipSlots(Player player) {
         int slots = 3;
         if (player.hasPermission("minecraftdungeons.companions.extra.1")) slots++;
@@ -238,13 +247,17 @@ public class CompanionService {
             return 0;
         }
 
-        Set<String> idSet = new HashSet<>(companionIds);
+        Set<String> equippedIds = new HashSet<>(equipped.computeIfAbsent(player.getUniqueId(), ignored -> new ArrayList<>()));
+        Set<String> idSet = companionIds.stream()
+                .filter(id -> !equippedIds.contains(id))
+                .collect(java.util.stream.Collectors.toSet());
+        if (idSet.isEmpty()) {
+            return 0;
+        }
+
         List<OwnedCompanion> ownedCompanions = owned(player);
         int before = ownedCompanions.size();
         ownedCompanions.removeIf(companion -> idSet.contains(companion.id()));
-
-        List<String> equippedIds = equipped.computeIfAbsent(player.getUniqueId(), ignored -> new ArrayList<>());
-        equippedIds.removeIf(idSet::contains);
 
         int deleted = before - ownedCompanions.size();
         if (deleted > 0) {
@@ -704,22 +717,22 @@ public class CompanionService {
         Location blockLocation = baseLocation.clone();
         clearTeleportedEggs(blockLocation);
         blockLocation.getBlock().setType(Material.DRAGON_EGG, false);
-
         List<UUID> textIds = new ArrayList<>();
+        String stageLabel = "Stage " + Math.max(1, stage);
         List<String> lines = List.of(
-                ChatColor.GREEN + "Zone Egg",
-                ChatColor.YELLOW + "[" + capitalize(zoneId) + " " + (stage > 0 ? "Stage " + stage : "Auto Stage") + "]",
-                ChatColor.WHITE + "Purchase a Companion that boosts",
-                ChatColor.WHITE + "the amount of money you gain!",
-                ChatColor.GREEN + "| Price: " + price + " Money",
-                ChatColor.GRAY + "" + ChatColor.ITALIC + "\u00ab Right Click to view \u00bb"
+                ChatColor.GREEN + "Companion Egg",
+                ChatColor.YELLOW + "[" + capitalize(zoneId) + " - " + stageLabel + "]",
+                ChatColor.WHITE + "Open companions with money buffs",
+                ChatColor.GREEN + "Price: " + de.fleaqx.minecraftDungeons.currency.NumberFormat.compact(java.math.BigInteger.valueOf(price)) + " Money",
+                ChatColor.GRAY + "" + ChatColor.ITALIC + "« Right Click to open »"
         );
 
-        double startY = 2.95D;
+        Location center = baseLocation.clone().add(0.5D, 0.0D, 0.5D);
+        double startY = 2.90D;
         for (int i = 0; i < lines.size(); i++) {
             int index = i;
             double y = startY - (index * 0.27D);
-            ArmorStand textLine = world.spawn(baseLocation.clone().add(0.5D, y, 0.5D), ArmorStand.class, stand -> {
+            ArmorStand textLine = world.spawn(center.clone().add(0.0D, y, 0.0D), ArmorStand.class, stand -> {
                 stand.setInvisible(true);
                 stand.setInvulnerable(true);
                 stand.setPersistent(false);

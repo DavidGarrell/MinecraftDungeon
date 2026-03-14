@@ -51,10 +51,10 @@ public class ZoneCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ChatColor.RED + "Players only.");
                 return true;
             }
-            int bought = dungeonService.maxUpgradeZones(player);
+            int bought = dungeonService.maxUpgradeStages(player);
             sender.sendMessage(bought <= 0
-                    ? ChatColor.RED + "No purchasable zone found."
-                    : ChatColor.GREEN + "Max upgrade unlocked " + bought + " zone(s).");
+                    ? ChatColor.RED + "No purchasable stage progression found."
+                    : ChatColor.GREEN + "Max upgrade unlocked " + bought + " progression step(s).");
             return true;
         }
 

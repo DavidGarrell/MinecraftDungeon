@@ -139,11 +139,11 @@ public class ZoneMenuService {
 
     private void handleZoneMenuClick(Player player, int slot) {
         if (slot == 4) {
-            int purchased = dungeonService.maxUpgradeZones(player);
+            int purchased = dungeonService.maxUpgradeStages(player);
             if (purchased <= 0) {
-                player.sendMessage(dungeonService.formatMessage("messages.no-purchasable-zone", "&cNo purchasable zone found.", Map.of()));
+                player.sendMessage(dungeonService.formatMessage("messages.no-purchasable-zone", "&cNo purchasable stage progression found.", Map.of()));
             } else {
-                player.sendMessage(dungeonService.formatMessage("messages.max-upgrade-bought", "&aMax upgrade bought {amount} zone(s).", Map.of("{amount}", String.valueOf(purchased))));
+                player.sendMessage(dungeonService.formatMessage("messages.max-upgrade-bought", "&aMax upgrade bought {amount} progression step(s).", Map.of("{amount}", String.valueOf(purchased))));
             }
             openZoneMenu(player);
             return;
