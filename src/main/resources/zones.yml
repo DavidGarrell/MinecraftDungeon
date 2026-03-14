@@ -28,141 +28,101 @@ zones:
         mobs:
           llama_common:
             entity: LLAMA
-            rarity: COMMON
             weight: 70
             scale: 1.0
             health: "1000"
             rewards:
               money: "10"
-              souls: "1"
-              essence: "1"
-              shards: "0"
       "2":
         unlock-price: "100"
         mobs:
           cow_common:
             entity: COW
-            rarity: COMMON
             weight: 70
             scale: 1.0
             health: "2500"
             rewards:
               money: "20"
-              souls: "2"
-              essence: "2"
-              shards: "0"
       "3":
         unlock-price: "500"
         mobs:
           pig_common:
             entity: PIG
-            rarity: COMMON
             weight: 70
             scale: 1.0
             health: "5000"
             rewards:
               money: "30"
-              souls: "3"
-              essence: "3"
-              shards: "1"
       "4":
         unlock-price: "1000"
         mobs:
           zombie_rare:
             entity: ZOMBIE
-            rarity: RARE
             weight: 50
             scale: 1.0
             health: "12000"
             rewards:
               money: "50"
-              souls: "5"
-              essence: "5"
-              shards: "1"
       "5":
         unlock-price: "2500"
         mobs:
           skeleton_rare:
             entity: SKELETON
-            rarity: RARE
             weight: 50
             scale: 1.0
             health: "25000"
             rewards:
               money: "90"
-              souls: "8"
-              essence: "8"
-              shards: "2"
       "6":
         unlock-price: "5000"
         mobs:
           blaze_epic:
             entity: BLAZE
-            rarity: EPIC
             weight: 30
             scale: 1.0
             health: "60000"
             rewards:
               money: "140"
-              souls: "15"
-              essence: "15"
-              shards: "3"
       "7":
         unlock-price: "10000"
         mobs:
           ravager_epic:
             entity: RAVAGER
-            rarity: EPIC
             weight: 20
             scale: 1.0
             health: "150000"
             rewards:
               money: "220"
-              souls: "22"
-              essence: "22"
-              shards: "4"
       "8":
         unlock-price: "25000"
         mobs:
           warden_legendary:
             entity: WARDEN
-            rarity: LEGENDARY
             weight: 10
             scale: 1.0
             health: "500000"
             rewards:
               money: "380"
-              souls: "40"
-              essence: "40"
-              shards: "8"
       "9":
         unlock-price: "50000"
         mobs:
           wither_legendary:
             entity: WITHER_SKELETON
-            rarity: LEGENDARY
             weight: 10
             scale: 1.0
             health: "1300000"
             rewards:
               money: "600"
-              souls: "60"
-              essence: "60"
-              shards: "12"
       "10":
         unlock-price: "100000"
         mobs:
           final_boss:
             entity: WITHER
-            rarity: BOSS
             weight: 5
             scale: 1.0
             health: "999999999999999999999999"
             rewards:
               money: "2000"
-              souls: "250"
-              essence: "250"
-              shards: "50"
 
   forest:
     display-name: "Forest Zone"
@@ -193,15 +153,11 @@ zones:
         mobs:
           spider_common:
             entity: SPIDER
-            rarity: COMMON
             weight: 70
             scale: 1.0
             health: "2000000"
             rewards:
               money: "3000"
-              souls: "400"
-              essence: "400"
-              shards: "80"
       "2":
         unlock-price: "200000"
       "3":
@@ -224,7 +180,6 @@ zones:
 afk-mob:
   enabled: true
   entity: OCELOT
-  rarity: LEGENDARY
   scale: 1.0
   health: "1000000000000000000000"
   hits-per-second: 2.0
@@ -237,6 +192,3 @@ afk-mob:
     pitch: 0
   rewards:
     money: "500"
-    souls: "25"
-    essence: "25"
-    shards: "5"

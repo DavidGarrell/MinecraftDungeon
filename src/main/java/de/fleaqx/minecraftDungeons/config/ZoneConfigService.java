@@ -187,10 +187,8 @@ public class ZoneConfigService {
                     }
 
                     EntityType entityType;
-                    MobRarity rarity;
                     try {
                         entityType = EntityType.valueOf(mobSection.getString("entity", "ZOMBIE").toUpperCase(Locale.ROOT));
-                        rarity = MobRarity.valueOf(mobSection.getString("rarity", "COMMON").toUpperCase(Locale.ROOT));
                     } catch (Exception ignored) {
                         continue;
                     }
@@ -204,6 +202,22 @@ public class ZoneConfigService {
                             NumberFormat.parse(mobSection.getString("rewards.shards", "0"), BigInteger.ZERO)
                     );
                     double scale = Math.max(0.1D, mobSection.getDouble("scale", plugin.getConfig().getDouble("gameplay.default-mob-scale", 1.0D)));
+                    String rarityInput = mobSection.getString("rarity", "");
+                    if (rarityInput == null || rarityInput.isBlank()) {
+                        mobs.add(new MobEntry(mobId + "_common", entityType, MobRarity.COMMON, weight, scale, health, rewards));
+                        mobs.add(new MobEntry(mobId + "_rare", entityType, MobRarity.RARE, weight, scale, health, rewards));
+                        mobs.add(new MobEntry(mobId + "_epic", entityType, MobRarity.EPIC, weight, scale, health, rewards));
+                        mobs.add(new MobEntry(mobId + "_legendary", entityType, MobRarity.LEGENDARY, weight, scale, health, rewards));
+                        continue;
+                    }
+
+                    MobRarity rarity;
+                    try {
+                        rarity = MobRarity.valueOf(rarityInput.toUpperCase(Locale.ROOT));
+                    } catch (Exception ignored) {
+                        continue;
+                    }
+
                     mobs.add(new MobEntry(mobId, entityType, rarity, weight, scale, health, rewards));
                 }
             }

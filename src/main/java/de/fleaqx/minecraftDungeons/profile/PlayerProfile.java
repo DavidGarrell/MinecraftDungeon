@@ -247,9 +247,7 @@ public class PlayerProfile {
     }
 
     public void resetProgressionForRebirth() {
-        for (CurrencyType type : CurrencyType.values()) {
-            balances.put(type, BigInteger.ZERO);
-        }
+        balances.put(CurrencyType.MONEY, BigInteger.ZERO);
 
         unlockedZoneOrder = 1;
         unlockedStages.clear();
