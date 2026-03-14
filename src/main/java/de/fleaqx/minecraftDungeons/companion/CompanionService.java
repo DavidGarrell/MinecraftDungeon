@@ -211,12 +211,14 @@ public class CompanionService {
         List<String> ids = equipped.computeIfAbsent(player.getUniqueId(), ignored -> new ArrayList<>());
         if (ids.contains(companionId)) {
             ids.remove(companionId);
+            save();
             return;
         }
         if (ids.size() >= maxEquipSlots(player)) {
             return;
         }
         ids.add(companionId);
+        save();
     }
 
     public void equipBest(Player player) {
