@@ -20,6 +20,7 @@ import java.util.*;
 public class CompanionMenuService {
 
     private static final int PAGE_SIZE = 27;
+    private static final int[] EQUIP_SLOT_LAYOUT = new int[]{0, 1, 2, 3, 6, 7};
 
     private final CompanionService companionService;
     private final DungeonService dungeonService;
@@ -58,7 +59,7 @@ public class CompanionMenuService {
         Optional<CompanionService.EggPoint> nearbyEgg = companionService.nearbyEgg(player, 10.0D);
         if (nearbyEgg.isPresent()) {
             activeZoneId = nearbyEgg.get().zoneId();
-            activeStage = resolveStageForZone(player, activeZoneId, nearbyEgg.get().stage());
+            activeStage = resolveStageForZone(player, activeZoneId, 0);
         } else {
             Optional<DungeonService.PlayerZoneContext> zoneContext = dungeonService.currentZoneContext(player);
             if (zoneContext.isPresent()) {
@@ -73,17 +74,19 @@ public class CompanionMenuService {
             }
         }
 
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < EQUIP_SLOT_LAYOUT.length; i++) {
             boolean unlocked = i < maxSlots;
             ItemStack slotItem = unlocked
-                    ? item(Material.LIME_STAINED_GLASS_PANE, ChatColor.GREEN + "Equip Slot " + (i + 1), List.of(ChatColor.GRAY + "Click a companion below"))
+                    ? item(Material.GRAY_STAINED_GLASS_PANE, ChatColor.GRAY + "Empty Slot", List.of(ChatColor.GRAY + "No companion active"))
                     : item(Material.RED_STAINED_GLASS_PANE, ChatColor.RED + "Locked Slot", List.of(ChatColor.GRAY + "Permission required"));
-            inv.setItem(2 + i, slotItem);
+            inv.setItem(EQUIP_SLOT_LAYOUT[i], slotItem);
         }
 
-        for (int i = 0; i < equipped.size() && i < 6; i++) {
-            inv.setItem(2 + i, companionHead(equipped.get(i), true, selectedIds.contains(equipped.get(i).id())));
+        for (int i = 0; i < equipped.size() && i < EQUIP_SLOT_LAYOUT.length; i++) {
+            inv.setItem(EQUIP_SLOT_LAYOUT[i], companionHead(equipped.get(i), true, selectedIds.contains(equipped.get(i).id())));
         }
+
+        inv.setItem(4, equipBestItem());
 
         List<CompanionService.OwnedCompanion> owned = companionService.owned(player);
         int pages = Math.max(1, (int) Math.ceil((double) owned.size() / PAGE_SIZE));
@@ -99,12 +102,10 @@ public class CompanionMenuService {
 
         inv.setItem(45, deleteToggleItem(selectionMode, awaitingDeleteConfirm));
         inv.setItem(46, bulkDeleteItem(awaitingBulkConfirm));
-        inv.setItem(48, item(Material.CLOCK, ChatColor.LIGHT_PURPLE + "Page " + safePage + "/" + pages, List.of(ChatColor.GRAY + "Browse companions")));
+        inv.setItem(48, dragonEggShortcutItem(activeZoneId, activeStage));
+        inv.setItem(49, item(Material.CLOCK, ChatColor.RED + "Page " + safePage + "/" + pages, List.of(ChatColor.GRAY + "Browse companions")));
         inv.setItem(50, item(Material.BLAZE_ROD, ChatColor.RED + "Next", List.of(ChatColor.GRAY + "Go to next page")));
-        inv.setItem(52, item(Material.BARRIER, ChatColor.RED + "Close", List.of(ChatColor.GRAY + "Close menu")));
-        inv.setItem(53, item(Material.DIAMOND, ChatColor.AQUA + "Equip Best", List.of(ChatColor.GREEN + "Click to equip best!")));
-        inv.setItem(47, dragonEggShortcutItem(activeZoneId, activeStage));
-        inv.setItem(49, companionHudItem(player, activeZoneId, activeStage));
+        inv.setItem(53, fuseItem());
 
         fill(inv);
         player.openInventory(inv);
@@ -366,22 +367,22 @@ public class CompanionMenuService {
             return true;
         }
 
-        if (slot == 52) {
-            player.closeInventory();
-            return true;
-        }
-        if (slot == 53) {
+        if (slot == 4) {
             companionService.equipBest(player);
             player.sendMessage(ChatColor.GREEN + "Equipped best companions.");
             openCompanions(player, ctx.page(), ctx.selectionMode(), ctx.selectedIds(), null, ctx.awaitingBulkConfirm(), ctx.pendingBulkMode(), ctx.pendingBulkValue());
             return true;
         }
-        if (slot == 47) {
+        if (slot == 48) {
             if (ctx.zoneId() == null || ctx.zoneId().isBlank()) {
                 player.sendMessage(ChatColor.RED + "No active zone found. Enter a zone first.");
             } else {
                 openEggMenu(player, ctx.zoneId(), resolveStageForZone(player, ctx.zoneId(), 0));
             }
+            return true;
+        }
+        if (slot == 53) {
+            player.sendMessage(ChatColor.AQUA + "Fuse companions feature is coming soon.");
             return true;
         }
         if (slot == 50) {
@@ -523,6 +524,24 @@ public class CompanionMenuService {
                 ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
                 ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + stage,
                 ChatColor.GREEN + "Click to open companion eggs"
+        ));
+    }
+
+    private ItemStack equipBestItem() {
+        return item(Material.DIAMOND, ChatColor.GREEN + "Equip Best", List.of(
+                ChatColor.GRAY + "Automatically equip your best companions",
+                ChatColor.GRAY + "based on highest multiplier.",
+                " ",
+                ChatColor.GREEN + "Click to equip best!"
+        ));
+    }
+
+    private ItemStack fuseItem() {
+        return item(Material.BEACON, ChatColor.AQUA + "Fuse", List.of(
+                ChatColor.GRAY + "Fuse your companions together to increase",
+                ChatColor.GRAY + "their rarity and boost multiplier!",
+                " ",
+                ChatColor.GREEN + "Click to fuse companions!"
         ));
     }
 
