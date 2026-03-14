@@ -17,6 +17,7 @@ import de.fleaqx.minecraftDungeons.companion.CompanionService;
 import de.fleaqx.minecraftDungeons.util.EntityLookup;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -62,6 +63,7 @@ public class DungeonService {
 
     private final double baseHitsPerSecond;
     private final long resetIntervalTicks;
+    private final boolean onlyPlayerDamageManagedMobs;
 
     private AfkMobDefinition afkMobDefinition;
     private BukkitTask zoneTask;
@@ -83,6 +85,7 @@ public class DungeonService {
 
         this.baseHitsPerSecond = Math.max(0.1D, plugin.getConfig().getDouble("combat.base-hits-per-second", 3.0D));
         this.resetIntervalTicks = Math.max(20L, plugin.getConfig().getLong("combat.reset-interval-seconds", 300L) * 20L);
+        this.onlyPlayerDamageManagedMobs = plugin.getConfig().getBoolean("gameplay.only-player-damages-managed-mobs", true);
     }
 
     public void start() {
@@ -326,7 +329,7 @@ public class DungeonService {
         if (session.stageKills() >= Math.max(1, zone.mobsPerStage())) {
             int nextStage = session.currentStage() + 1;
             if (nextStage > zone.totalStages()) {
-                player.sendMessage(ChatColor.GOLD + "Zone " + zone.displayName() + " completed.");
+                player.sendMessage(formatMessage("messages.zone-completed", "&6Zone {zone} completed.", Map.of("{zone}", zone.displayName())));
                 session.currentStage(zone.totalStages());
                 session.stageKills(0);
                 spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
@@ -335,7 +338,7 @@ public class DungeonService {
 
             int unlockedStage = unlockedStage(player, zone.id());
             if (nextStage > unlockedStage) {
-                player.sendMessage(ChatColor.YELLOW + "Stage " + nextStage + " is locked. Use /zone to unlock it.");
+                player.sendMessage(formatMessage("messages.stage-locked", "&eStage {stage} is locked. Use /zone to unlock it.", Map.of("{stage}", String.valueOf(nextStage))));
                 session.currentStage(unlockedStage);
                 session.stageKills(0);
                 spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
@@ -344,13 +347,29 @@ public class DungeonService {
 
             session.currentStage(nextStage);
             session.stageKills(0);
-            player.sendMessage(ChatColor.GREEN + "Stage " + nextStage + " started.");
+            player.sendMessage(formatMessage("messages.stage-started", "&aStage {stage} started.", Map.of("{stage}", String.valueOf(nextStage))));
             spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
             return new AttackResult(true, true);
         }
 
         spawnReplacementMob(player, session);
         return new AttackResult(true, true);
+    }
+
+
+    public boolean onlyPlayerDamageManagedMobs() {
+        return onlyPlayerDamageManagedMobs;
+    }
+
+    public String formatMessage(String path, String fallback, Map<String, String> replacements) {
+        String raw = plugin.getConfig().getString(path, fallback);
+        if (raw == null) {
+            raw = fallback;
+        }
+        for (Map.Entry<String, String> entry : replacements.entrySet()) {
+            raw = raw.replace(entry.getKey(), entry.getValue());
+        }
+        return ChatColor.translateAlternateColorCodes('&', raw);
     }
 
     public boolean isManagedMob(UUID entityId) {
@@ -457,7 +476,7 @@ public class DungeonService {
             int selected = selectedStage(player, zone.id());
             session.currentStage(selected);
             session.stageKills(0);
-            player.sendMessage(ChatColor.AQUA + "Entered zone: " + zone.displayName() + " | Stage " + selected);
+            player.sendMessage(formatMessage("messages.entered-zone", "&bEntered zone: {zone} | Stage {stage}", Map.of("{zone}", zone.displayName(), "{stage}", String.valueOf(selected))));
             spawnStage(session, player, lastCombatLocations.get(player.getUniqueId()));
         }
     }
@@ -470,7 +489,7 @@ public class DungeonService {
 
         StageDefinition stage = zone.stageByIndex(session.currentStage());
         if (stage == null || stage.mobs().isEmpty()) {
-            player.sendMessage(ChatColor.RED + "Stage " + session.currentStage() + " has no mobs configured.");
+            player.sendMessage(formatMessage("messages.stage-no-mobs", "&cStage {stage} has no mobs configured.", Map.of("{stage}", String.valueOf(session.currentStage()))));
             return;
         }
 
@@ -604,6 +623,7 @@ public class DungeonService {
                 mob.entityType(),
                 mob.rarity(),
                 mob.weight(),
+                mob.scale(),
                 stageHealth,
                 rewards
         );
@@ -696,6 +716,10 @@ public class DungeonService {
         entity.setCollidable(false);
         entity.setAI(false);
 
+        if (entity.getAttribute(Attribute.GENERIC_SCALE) != null) {
+            entity.getAttribute(Attribute.GENERIC_SCALE).setBaseValue(Math.max(0.1D, mob.scale()));
+        }
+
         virtualHealthService.register(entity, player.getUniqueId(), level, mob);
         visibilityService.register(entity, player.getUniqueId());
         rarityVisualService.apply(entity, mob.rarity());
@@ -737,7 +761,7 @@ public class DungeonService {
         }
 
         lockedMessageCooldown.put(player.getUniqueId(), now);
-        player.sendMessage(ChatColor.RED + "Zone locked. Price: " + zone.unlockPrice());
+        player.sendMessage(formatMessage("messages.zone-locked", "&cZone locked. Price: {price}", Map.of("{price}", zone.unlockPrice().toString())));
     }
 
     private void giveRewards(Player player, CurrencyBundle rewards) {

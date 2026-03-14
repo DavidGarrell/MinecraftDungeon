@@ -30,6 +30,7 @@ zones:
             entity: LLAMA
             rarity: COMMON
             weight: 70
+            scale: 1.0
             health: "1000"
             rewards:
               money: "10"
@@ -43,6 +44,7 @@ zones:
             entity: COW
             rarity: COMMON
             weight: 70
+            scale: 1.0
             health: "2500"
             rewards:
               money: "20"
@@ -56,6 +58,7 @@ zones:
             entity: PIG
             rarity: COMMON
             weight: 70
+            scale: 1.0
             health: "5000"
             rewards:
               money: "30"
@@ -69,6 +72,7 @@ zones:
             entity: ZOMBIE
             rarity: RARE
             weight: 50
+            scale: 1.0
             health: "12000"
             rewards:
               money: "50"
@@ -82,6 +86,7 @@ zones:
             entity: SKELETON
             rarity: RARE
             weight: 50
+            scale: 1.0
             health: "25000"
             rewards:
               money: "90"
@@ -95,6 +100,7 @@ zones:
             entity: BLAZE
             rarity: EPIC
             weight: 30
+            scale: 1.0
             health: "60000"
             rewards:
               money: "140"
@@ -108,6 +114,7 @@ zones:
             entity: RAVAGER
             rarity: EPIC
             weight: 20
+            scale: 1.0
             health: "150000"
             rewards:
               money: "220"
@@ -121,6 +128,7 @@ zones:
             entity: WARDEN
             rarity: LEGENDARY
             weight: 10
+            scale: 1.0
             health: "500000"
             rewards:
               money: "380"
@@ -134,6 +142,7 @@ zones:
             entity: WITHER_SKELETON
             rarity: LEGENDARY
             weight: 10
+            scale: 1.0
             health: "1300000"
             rewards:
               money: "600"
@@ -147,6 +156,7 @@ zones:
             entity: WITHER
             rarity: BOSS
             weight: 5
+            scale: 1.0
             health: "999999999999999999999999"
             rewards:
               money: "2000"
@@ -185,6 +195,7 @@ zones:
             entity: SPIDER
             rarity: COMMON
             weight: 70
+            scale: 1.0
             health: "2000000"
             rewards:
               money: "3000"
@@ -214,6 +225,7 @@ afk-mob:
   enabled: true
   entity: OCELOT
   rarity: LEGENDARY
+  scale: 1.0
   health: "1000000000000000000000"
   hits-per-second: 2.0
   location:

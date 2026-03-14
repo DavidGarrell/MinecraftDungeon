@@ -138,6 +138,7 @@ public class ZoneConfigService {
                 type,
                 rarity,
                 1,
+                Math.max(0.1D, config.getDouble("afk-mob.scale", plugin.getConfig().getDouble("gameplay.default-mob-scale", 1.0D))),
                 NumberFormat.parse(config.getString("afk-mob.health", "1000000"), BigInteger.valueOf(1_000_000)),
                 CurrencyBundle.of(
                         NumberFormat.parse(config.getString("afk-mob.rewards.money", "100"), BigInteger.valueOf(100)),
@@ -202,7 +203,8 @@ public class ZoneConfigService {
                             NumberFormat.parse(mobSection.getString("rewards.essence", "0"), BigInteger.ZERO),
                             NumberFormat.parse(mobSection.getString("rewards.shards", "0"), BigInteger.ZERO)
                     );
-                    mobs.add(new MobEntry(mobId, entityType, rarity, weight, health, rewards));
+                    double scale = Math.max(0.1D, mobSection.getDouble("scale", plugin.getConfig().getDouble("gameplay.default-mob-scale", 1.0D)));
+                    mobs.add(new MobEntry(mobId, entityType, rarity, weight, scale, health, rewards));
                 }
             }
 
@@ -304,6 +306,7 @@ public class ZoneConfigService {
         config.set(mobBase + ".entity", entry.entityType().name());
         config.set(mobBase + ".rarity", entry.rarity().name());
         config.set(mobBase + ".weight", entry.weight());
+        config.set(mobBase + ".scale", entry.scale());
         config.set(mobBase + ".health", entry.health().toString());
         config.set(mobBase + ".rewards.money", entry.rewards().money().toString());
         config.set(mobBase + ".rewards.souls", entry.rewards().souls().toString());

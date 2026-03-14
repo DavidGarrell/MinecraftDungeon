@@ -29,7 +29,7 @@ public class ZoneMenuService {
     }
 
     public void openZoneMenu(Player player) {
-        Inventory inventory = UiMenuUtils.createMenu(player, 54, "Dungeon Zones");
+        Inventory inventory = UiMenuUtils.createMenu(player, 54, dungeonService.formatMessage("ui.zone-menu-title", "&8Dungeon Zones", Map.of()));
 
         int slot = 19;
         for (ZoneDefinition zone : dungeonService.sortedZones()) {
@@ -50,7 +50,7 @@ public class ZoneMenuService {
         }
 
         inventory.setItem(4, UiMenuUtils.item(Material.NETHER_STAR,
-                ChatColor.GOLD + "Max Upgrade",
+                dungeonService.formatMessage("ui.max-upgrade-title", "&6Max Upgrade", Map.of()),
                 List.of(
                         ChatColor.GRAY + "Buy as many zones as possible",
                         ChatColor.GRAY + "with your current Money.",
@@ -58,7 +58,7 @@ public class ZoneMenuService {
                 )));
 
         inventory.setItem(6, UiMenuUtils.item(Material.ENDER_PEARL,
-                ChatColor.AQUA + "Go To Current Zone",
+                dungeonService.formatMessage("ui.goto-zone-title", "&bGo To Current Zone", Map.of()),
                 List.of(
                         ChatColor.GRAY + "Teleport to your highest",
                         ChatColor.GRAY + "unlocked zone spawn."
@@ -70,7 +70,8 @@ public class ZoneMenuService {
     }
 
     public void openStageMenu(Player player, ZoneDefinition zone) {
-        Inventory inventory = UiMenuUtils.createMenu(player, 54, zone.displayName() + " Stages");
+        String stageTitle = dungeonService.formatMessage("ui.stage-menu-title", "&8{zone} Stages", Map.of("{zone}", zone.displayName()));
+        Inventory inventory = UiMenuUtils.createMenu(player, 54, stageTitle);
         int unlockedStage = dungeonService.unlockedStage(player, zone.id());
         int selectedStage = dungeonService.selectedStage(player, zone.id());
 
@@ -140,9 +141,9 @@ public class ZoneMenuService {
         if (slot == 4) {
             int purchased = dungeonService.maxUpgradeZones(player);
             if (purchased <= 0) {
-                player.sendMessage(ChatColor.RED + "No purchasable zone found.");
+                player.sendMessage(dungeonService.formatMessage("messages.no-purchasable-zone", "&cNo purchasable zone found.", Map.of()));
             } else {
-                player.sendMessage(ChatColor.GREEN + "Max upgrade bought " + purchased + " zone(s).");
+                player.sendMessage(dungeonService.formatMessage("messages.max-upgrade-bought", "&aMax upgrade bought {amount} zone(s).", Map.of("{amount}", String.valueOf(purchased))));
             }
             openZoneMenu(player);
             return;
@@ -153,9 +154,9 @@ public class ZoneMenuService {
                 if (zone.spawn() != null && zone.spawn().getWorld() != null) {
                     player.teleport(zone.spawn());
                 } else {
-                    player.sendMessage(ChatColor.RED + "Zone spawn is not set.");
+                    player.sendMessage(dungeonService.formatMessage("messages.zone-spawn-not-set", "&cZone spawn is not set.", Map.of()));
                 }
-            }, () -> player.sendMessage(ChatColor.RED + "No unlocked zone found."));
+            }, () -> player.sendMessage(dungeonService.formatMessage("messages.no-unlocked-zone", "&cNo unlocked zone found.", Map.of())));
             return;
         }
 
@@ -168,9 +169,9 @@ public class ZoneMenuService {
             if (dungeonService.removeCurrency(player, CurrencyType.MONEY, clickedZone.unlockPrice())) {
                 dungeonService.profile(player).unlockedZoneOrder(clickedZone.order());
                 dungeonService.profile(player).unlockedStage(clickedZone.id(), 1);
-                player.sendMessage(ChatColor.GREEN + "Zone unlocked: " + clickedZone.displayName());
+                player.sendMessage(dungeonService.formatMessage("messages.zone-unlocked", "&aZone unlocked: {zone}", Map.of("{zone}", clickedZone.displayName())));
             } else {
-                player.sendMessage(ChatColor.RED + "Not enough Money.");
+                player.sendMessage(dungeonService.formatMessage("messages.not-enough-money", "&cNot enough Money.", Map.of()));
             }
             openZoneMenu(player);
             return;
@@ -203,10 +204,10 @@ public class ZoneMenuService {
 
         boolean unlocked = dungeonService.unlockStage(player, zone, stageIndex);
         if (unlocked) {
-            player.sendMessage(ChatColor.GREEN + "Stage unlocked: " + stageIndex);
+            player.sendMessage(dungeonService.formatMessage("messages.stage-unlocked", "&aStage unlocked: {stage}", Map.of("{stage}", String.valueOf(stageIndex))));
             selectAndTeleport(player, zone, stageIndex);
         } else {
-            player.sendMessage(ChatColor.RED + "Stage cannot be unlocked.");
+            player.sendMessage(dungeonService.formatMessage("messages.stage-cannot-unlock", "&cStage cannot be unlocked.", Map.of()));
             openStageMenu(player, zone);
         }
     }
@@ -217,7 +218,7 @@ public class ZoneMenuService {
             player.teleport(zone.spawn());
         }
         dungeonService.forceStart(player, zone, stageIndex);
-        player.sendMessage(ChatColor.GREEN + "Selected Stage " + stageIndex + " in " + zone.displayName());
+        player.sendMessage(dungeonService.formatMessage("messages.stage-selected", "&aSelected Stage {stage} in {zone}", Map.of("{stage}", String.valueOf(stageIndex), "{zone}", zone.displayName())));
         player.closeInventory();
     }
 
