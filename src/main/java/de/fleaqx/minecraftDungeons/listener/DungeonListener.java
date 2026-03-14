@@ -169,7 +169,7 @@ public class DungeonListener implements Listener {
         if (rightClick && event.getClickedBlock() != null) {
             companionService.eggPointAtBlock(event.getClickedBlock()).ifPresent(point -> {
                 event.setCancelled(true);
-                companionMenuService.openEggMenuAutoStage(player, point.zoneId());
+                companionMenuService.openEggMenuFromPoint(player, point);
             });
             if (event.isCancelled()) {
                 return;
@@ -191,7 +191,7 @@ public class DungeonListener implements Listener {
         if (rightClick) {
             companionService.nearbyEgg(player, 3.5D).ifPresent(point -> {
                 event.setCancelled(true);
-                companionMenuService.openEggMenuAutoStage(player, point.zoneId());
+                companionMenuService.openEggMenuFromPoint(player, point);
             });
         }
     }
@@ -203,7 +203,7 @@ public class DungeonListener implements Listener {
         java.util.Optional<CompanionService.EggPoint> eggPoint = companionService.eggPointByEntity(event.getRightClicked());
         if (eggPoint.isPresent()) {
             event.setCancelled(true);
-            companionMenuService.openEggMenuAutoStage(player, eggPoint.get().zoneId());
+            companionMenuService.openEggMenuFromPoint(player, eggPoint.get());
             return;
         }
 

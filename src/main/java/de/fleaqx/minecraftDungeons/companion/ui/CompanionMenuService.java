@@ -206,6 +206,21 @@ public class CompanionMenuService {
         String normalizedZone = zoneId.toLowerCase(Locale.ROOT);
         openEggMenu(player, normalizedZone, resolveStageForZone(player, normalizedZone, 0));
     }
+
+    public void openEggMenuFromPoint(Player player, CompanionService.EggPoint point) {
+        if (point == null || point.zoneId() == null || point.zoneId().isBlank()) {
+            player.sendMessage(ChatColor.RED + "No zone selected.");
+            return;
+        }
+
+        String normalizedZone = point.zoneId().toLowerCase(Locale.ROOT);
+        int configuredStage = point.stage();
+        int resolvedStage = configuredStage > 0
+                ? configuredStage
+                : resolveStageForZone(player, normalizedZone, configuredStage);
+        openEggMenu(player, normalizedZone, resolvedStage);
+    }
+
     public void openEggMenu(Player player, String zoneId, int stage) {
         if (zoneId == null || zoneId.isBlank()) {
             return;
@@ -234,7 +249,7 @@ public class CompanionMenuService {
                 )
         ));
 
-        inv.setItem(22, item(Material.NETHER_STAR, ChatColor.AQUA + "Companion HUD", List.of(
+        inv.setItem(31, item(Material.NETHER_STAR, ChatColor.AQUA + "Companion HUD", List.of(
                 ChatColor.GRAY + "Zone: " + ChatColor.YELLOW + capitalize(zoneId),
                 ChatColor.GRAY + "Stage: " + ChatColor.YELLOW + safeStage,
                 ChatColor.GRAY + "Price / Egg: " + ChatColor.GREEN + NumberFormat.compact(BigInteger.valueOf(price)) + " Money"
