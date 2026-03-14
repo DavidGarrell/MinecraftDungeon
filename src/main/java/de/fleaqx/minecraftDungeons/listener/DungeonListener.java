@@ -99,6 +99,9 @@ public class DungeonListener implements Listener {
         if (!dungeonService.isManagedMob(event.getEntity().getUniqueId())) {
             return;
         }
+        if (!dungeonService.onlyPlayerDamageManagedMobs() && event.getCause() == EntityDamageEvent.DamageCause.ENTITY_ATTACK) {
+            return;
+        }
         event.setCancelled(true);
     }
 

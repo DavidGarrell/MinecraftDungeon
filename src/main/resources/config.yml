@@ -2,6 +2,33 @@ combat:
   base-hits-per-second: 3.0
   reset-interval-seconds: 300
 
+gameplay:
+  only-player-damages-managed-mobs: true
+  default-mob-scale: 1.0
+
+ui:
+  zone-menu-title: "&8Dungeon Zones"
+  stage-menu-title: "&8{zone} Stages"
+  max-upgrade-title: "&6Max Upgrade"
+  goto-zone-title: "&bGo To Current Zone"
+
+messages:
+  zone-completed: "&6Zone {zone} completed."
+  stage-locked: "&eStage {stage} is locked. Use /zone to unlock it."
+  stage-started: "&aStage {stage} started."
+  entered-zone: "&bEntered zone: {zone} | Stage {stage}"
+  stage-no-mobs: "&cStage {stage} has no mobs configured."
+  zone-locked: "&cZone locked. Price: {price}"
+  no-purchasable-zone: "&cNo purchasable zone found."
+  max-upgrade-bought: "&aMax upgrade bought {amount} zone(s)."
+  zone-spawn-not-set: "&cZone spawn is not set."
+  no-unlocked-zone: "&cNo unlocked zone found."
+  zone-unlocked: "&aZone unlocked: {zone}"
+  not-enough-money: "&cNot enough Money."
+  stage-unlocked: "&aStage unlocked: {stage}"
+  stage-cannot-unlock: "&cStage cannot be unlocked."
+  stage-selected: "&aSelected Stage {stage} in {zone}"
+
 sword:
   formula:
     base-damage: 1.0

@@ -10,6 +10,7 @@ public record MobEntry(
         EntityType entityType,
         MobRarity rarity,
         int weight,
+        double scale,
         BigInteger health,
         CurrencyBundle rewards
 ) {

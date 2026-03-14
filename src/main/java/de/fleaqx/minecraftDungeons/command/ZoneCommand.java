@@ -206,7 +206,7 @@ public class ZoneCommand implements CommandExecutor, TabCompleter {
                 BigInteger essence = NumberFormat.parse(args[11], BigInteger.ZERO);
                 BigInteger shards = NumberFormat.parse(args[12], BigInteger.ZERO);
 
-                MobEntry mob = new MobEntry(mobId, type, rarity, weight, health, CurrencyBundle.of(money, souls, essence, shards));
+                MobEntry mob = new MobEntry(mobId, type, rarity, weight, 1.0D, health, CurrencyBundle.of(money, souls, essence, shards));
                 boolean ok = configService.addMob(zone, stage, mob);
                 sender.sendMessage(ok ? ChatColor.GREEN + "Mob saved." : ChatColor.RED + "Zone or stage not found.");
                 dungeonService.reload();
