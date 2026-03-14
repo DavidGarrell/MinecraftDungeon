@@ -64,13 +64,13 @@ public class SwordMenuService {
 
         inv.setItem(3, item(Material.BLAZE_POWDER,
                 (VIEW_SOULS.equals(view) ? ChatColor.GREEN : ChatColor.GOLD) + "Souls Enchants" + (VIEW_SOULS.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
-                List.of(ChatColor.GRAY + "Use Souls to upgrade your enchants.", "", ChatColor.YELLOW + "Click to open")));
+                List.of(ChatColor.GRAY + "Use Souls to upgrade your enchants.", "", ChatColor.YELLOW + "§lClick to open")));
         inv.setItem(4, item(Material.DIAMOND,
                 (VIEW_ESSENCE.equals(view) ? ChatColor.GREEN : ChatColor.AQUA) + "Essence Enchants" + (VIEW_ESSENCE.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
-                List.of(ChatColor.GRAY + "Use Essence for special upgrades.", "", ChatColor.YELLOW + "Click to open")));
+                List.of(ChatColor.GRAY + "Use Essence for special upgrades.", "", ChatColor.YELLOW + "§lClick to open")));
         inv.setItem(5, item(Material.NETHER_STAR,
                 (VIEW_SKINS.equals(view) ? ChatColor.GREEN : ChatColor.LIGHT_PURPLE) + "Sword Skins" + (VIEW_SKINS.equals(view) ? ChatColor.GREEN + " (SELECTED)" : ""),
-                List.of(ChatColor.GRAY + "Choose and upgrade your sword.", "", ChatColor.YELLOW + "Click to open")));
+                List.of(ChatColor.GRAY + "Choose and upgrade your sword.", "", ChatColor.YELLOW + "§lClick to open")));
 
         inv.setItem(46, item(Material.BOOK, ChatColor.AQUA + "Perks",
                 List.of(ChatColor.GRAY + "Perks act as permanent multipliers", ChatColor.GRAY + "for your sword.", ChatColor.AQUA + "Click to view perks")));
@@ -123,11 +123,15 @@ public class SwordMenuService {
             ItemStack item = new ItemStack(def.material());
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
-                meta.setDisplayName((tier > 0 ? ChatColor.GREEN : ChatColor.RED) + def.name());
+                meta.setDisplayName((tier > 0 ? ChatColor.GREEN : ChatColor.RED) + def.name() + ChatColor.WHITE + " Sword");
                 List<String> lore = new ArrayList<>();
-                lore.add(ChatColor.GRAY + "ID: " + ChatColor.WHITE + def.id());
-                lore.add(ChatColor.GRAY + "Current Tier: " + ChatColor.WHITE + tier + "/5");
-                lore.add(ChatColor.YELLOW + "Click to open upgrade view");
+                lore.add(ChatColor.GOLD + "§lStatistics");
+                lore.add(ChatColor.GOLD + " §l| " + ChatColor.GRAY + "ID: " + ChatColor.YELLOW + def.id());
+                lore.add(ChatColor.GOLD + " §l| " + ChatColor.GRAY + "Current Tier: " + ChatColor.YELLOW + tier + ChatColor.GRAY + "/" + ChatColor.RED + SwordService.MAX_TIERS);
+                lore.add(ChatColor.GOLD + " §l| " + ChatColor.GRAY + "Current Damage: " + ChatColor.RED + NumberFormat.compact(swordService.tierDamage(def.id(), Math.max(1, tier))));
+                lore.add(" ");
+                lore.add(ChatColor.YELLOW + "§lUpgrade");
+                lore.add(ChatColor.YELLOW + " §l| " + ChatColor.GRAY + "Click to open upgrade menu.");
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
@@ -135,7 +139,7 @@ public class SwordMenuService {
         }
 
         inv.setItem(51, item(Material.NETHER_STAR, ChatColor.GOLD + "Best Sword",
-                List.of(ChatColor.GRAY + "Buys best affordable sword upgrades.", ChatColor.YELLOW + "Click to buy.")));
+                List.of(ChatColor.GRAY + "Buys best affordable sword upgrades.", "", ChatColor.YELLOW + "§lClick to buy.")));
     }
 
     private void renderEnchants(Player player, Inventory inv, EnchantCategory category, int page) {
@@ -291,12 +295,14 @@ public class SwordMenuService {
                 meta.setDisplayName((tier <= currentTier ? ChatColor.GREEN : ChatColor.DARK_PURPLE) + def.name() + " " + roman(tier));
                 List<String> lore = new ArrayList<>();
                 lore.add(ChatColor.GREEN + "Information");
-                lore.add(ChatColor.DARK_GREEN + "| " + ChatColor.GRAY + "Damage: " + ChatColor.RED + NumberFormat.compact(swordService.tierDamage(swordId, tier)));
-                lore.add(ChatColor.DARK_GREEN + "| " + ChatColor.GRAY + "Price: " + ChatColor.GREEN + NumberFormat.compact(swordService.tierPrice(swordId, tier)));
-                lore.add(ChatColor.DARK_GREEN + "| " + ChatColor.GRAY + "Tier: " + ChatColor.AQUA + tier + "/5");
+                lore.add(ChatColor.DARK_GREEN + "§l| " + ChatColor.GRAY + "Damage: " + ChatColor.RED + NumberFormat.compact(swordService.tierDamage(swordId, tier)));
+                lore.add(ChatColor.DARK_GREEN + "§l| " + ChatColor.GRAY + "Price: " + ChatColor.GREEN + NumberFormat.compact(swordService.tierPrice(swordId, tier)));
+                lore.add(ChatColor.DARK_GREEN + "§l| " + ChatColor.GRAY + "Tier: " + ChatColor.AQUA + tier + "/" + SwordService.MAX_TIERS);
                 lore.add(" ");
-                lore.add(tier <= currentTier ? ChatColor.GREEN + "UNLOCKED" : ChatColor.RED + "LOCKED");
-                lore.add(ChatColor.GRAY + "Click to purchase this Sword");
+                lore.add(ChatColor.YELLOW + "Action");
+                lore.add(tier <= currentTier
+                        ? ChatColor.YELLOW + "§l| " + ChatColor.GREEN + "Already unlocked"
+                        : ChatColor.YELLOW + "§l| " + ChatColor.GRAY + "Click to purchase this sword tier");
                 meta.setLore(lore);
                 item.setItemMeta(meta);
             }
@@ -317,7 +323,7 @@ public class SwordMenuService {
         double yourChance = enchantService.activationChance(player, def);
 
         inv.setItem(10, item(def.icon(), ChatColor.AQUA + def.displayName(), List.of(
-                ChatColor.GRAY + "Level: " + ChatColor.GREEN + level + ChatColor.DARK_GRAY + " / " + ChatColor.GREEN + def.maxLevel(),
+                ChatColor.GRAY + "Level: " + ChatColor.GREEN + level + ChatColor.DARK_GRAY + " / " + ChatColor.RED + def.maxLevel(),
                 ChatColor.GRAY + "Base Activation Chance: " + ChatColor.RED + chanceWithOdds(baseChance),
                 ChatColor.GRAY + "Your Activation Chance: " + ChatColor.RED + chanceWithOdds(yourChance)
         )));
@@ -325,27 +331,27 @@ public class SwordMenuService {
         inv.setItem(12, item(Material.EMERALD, ChatColor.GREEN + "+1 Enchant Levels", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + "1",
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 1)) + " " + def.costCurrency().name(),
-                ChatColor.GREEN + "CLICK HERE"
+                ChatColor.YELLOW + "§lClick to upgrade"
         )));
         inv.setItem(13, item(Material.EXPERIENCE_BOTTLE, ChatColor.GREEN + "+10 Enchant Levels", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + "10",
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 10)) + " " + def.costCurrency().name(),
-                ChatColor.GREEN + "CLICK HERE"
+                ChatColor.YELLOW + "§lClick to upgrade"
         )));
         inv.setItem(14, item(Material.END_CRYSTAL, ChatColor.GREEN + "+100 Enchant Levels", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + "100",
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 100)) + " " + def.costCurrency().name(),
-                ChatColor.GREEN + "CLICK HERE"
+                ChatColor.YELLOW + "§lClick to upgrade"
         )));
         inv.setItem(15, item(Material.NETHER_STAR, ChatColor.GREEN + "+1000 Enchant Levels", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + "1000",
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), 1000)) + " " + def.costCurrency().name(),
-                ChatColor.GREEN + "CLICK HERE"
+                ChatColor.YELLOW + "§lClick to upgrade"
         )));
         inv.setItem(16, item(Material.HOPPER, ChatColor.GREEN + "Max Upgrade", List.of(
                 ChatColor.GRAY + "Level: " + ChatColor.WHITE + enchantService.maxAffordableLevels(player, def.id()),
                 ChatColor.GRAY + "Price: " + ChatColor.RED + NumberFormat.compact(enchantService.totalPriceFor(player, def.id(), enchantService.maxAffordableLevels(player, def.id()))) + " " + def.costCurrency().name(),
-                ChatColor.GREEN + "CLICK HERE"
+                ChatColor.YELLOW + "§lClick to upgrade"
         )));
 
         boolean enabled = enchantService.enchantEnabled(player, def.id());

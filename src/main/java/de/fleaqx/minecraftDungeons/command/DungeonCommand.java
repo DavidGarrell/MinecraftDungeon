@@ -409,7 +409,7 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleCompanion(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion setlocation <zoneId>");
+            sender.sendMessage(ChatColor.YELLOW + "/dungeon companion setlocation <zoneId> [stage]");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon companion egg <zoneId> [stage] [player]");
             sender.sendMessage(ChatColor.YELLOW + "/dungeon companion ui [player]");
             return true;
@@ -426,11 +426,21 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args.length < 3) {
-                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon companion setlocation <zoneId>");
+                    sender.sendMessage(ChatColor.RED + "Usage: /dungeon companion setlocation <zoneId> [stage]");
                     return true;
                 }
-                companionService.setEggLocation(args[2], 0, player.getLocation());
-                sender.sendMessage(ChatColor.GREEN + "Companion egg location set for zone " + args[2] + " (stage auto).");
+                int stage = 0;
+                if (args.length >= 4) {
+                    try {
+                        stage = Integer.parseInt(args[3]);
+                    } catch (NumberFormatException ignored) {
+                        sender.sendMessage(ChatColor.RED + "Stage must be a number.");
+                        return true;
+                    }
+                }
+                companionService.setEggLocation(args[2], stage, player.getLocation());
+                sender.sendMessage(ChatColor.GREEN + "Companion egg location set for zone " + args[2]
+                        + (stage > 0 ? (" stage " + stage + ".") : " (auto stage)."));
                 return true;
             }
             case "egg" -> {
@@ -568,6 +578,10 @@ public class DungeonCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 3 && args[0].equalsIgnoreCase("companion") && args[1].equalsIgnoreCase("setlocation")) {
             return dungeonService.zones().stream().map(ZoneDefinition::id).toList();
+        }
+
+        if (args.length == 4 && args[0].equalsIgnoreCase("companion") && args[1].equalsIgnoreCase("setlocation")) {
+            return List.of("0", "1", "5", "10");
         }
 
         if (args.length == 3 && args[0].equalsIgnoreCase("companion") && args[1].equalsIgnoreCase("ui")) {
