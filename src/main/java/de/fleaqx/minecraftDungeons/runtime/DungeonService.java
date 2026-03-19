@@ -478,8 +478,15 @@ public class DungeonService {
         return out;
     }
 
+
+    public List<LivingEntity> activeCombatOwnedMobs(Player player) {
+        return activeOwnedMobs(player).stream()
+                .filter(mob -> !isAfkMobFor(player, mob.getUniqueId()))
+                .toList();
+    }
+
     public void damageOwnedMobs(Player player, BigInteger damage, UUID excludeEntityId, DamageIndicatorService indicatorService) {
-        for (LivingEntity mob : activeOwnedMobs(player)) {
+        for (LivingEntity mob : activeCombatOwnedMobs(player)) {
             if (excludeEntityId != null && excludeEntityId.equals(mob.getUniqueId())) {
                 continue;
             }
