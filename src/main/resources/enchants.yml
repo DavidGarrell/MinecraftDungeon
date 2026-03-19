@@ -58,6 +58,40 @@ enchants:
       per-level: 0.00001
     packet-based: true
 
+  chain_lightning:
+    display-name: "Chain Lightning"
+    category: SOULS
+    icon: LIGHTNING_ROD
+    description:
+      - "Shocks nearby monsters after a hit."
+    max-level: 2500
+    required-tool-level: 2
+    cost:
+      currency: SOULS
+      base: "2400"
+      growth: 1.115
+    chance:
+      base: 0.0012
+      per-level: 0.000015
+    packet-based: true
+
+  mark_of_death:
+    display-name: "Mark of Death"
+    category: SOULS
+    icon: WITHER_ROSE
+    description:
+      - "Marks enemies and empowers future hits."
+    max-level: 1800
+    required-tool-level: 3
+    cost:
+      currency: SOULS
+      base: "4200"
+      growth: 1.12
+    chance:
+      base: 0.001
+      per-level: 0.000012
+    packet-based: true
+
   phantom_strike:
     display-name: "Phantom Strike"
     category: SOULS
@@ -89,6 +123,23 @@ enchants:
       growth: 1.13
     chance:
       base: 0.001
+      per-level: 0.00001
+    packet-based: true
+
+  inferno:
+    display-name: "Inferno"
+    category: SOULS
+    icon: FIRE_CHARGE
+    description:
+      - "Ignites enemies and erupts after enough stacks."
+    max-level: 2200
+    required-tool-level: 4
+    cost:
+      currency: SOULS
+      base: "8500"
+      growth: 1.13
+    chance:
+      base: 0.0008
       per-level: 0.00001
     packet-based: true
 
@@ -161,6 +212,23 @@ enchants:
       per-level: 0.00002
     packet-based: true
 
+  soul_clone:
+    display-name: "Soul Clone"
+    category: SOULS
+    icon: ECHO_SHARD
+    description:
+      - "Summons spectral copies that slash your target."
+    max-level: 1500
+    required-tool-level: 3
+    cost:
+      currency: SOULS
+      base: "5200"
+      growth: 1.12
+    chance:
+      base: 0.001
+      per-level: 0.000012
+    packet-based: true
+
   soul_greed:
     display-name: "Soul Finder"
     category: SOULS
@@ -193,6 +261,23 @@ enchants:
     chance:
       base: 0.0
       per-level: 0.0
+    packet-based: true
+
+  soul_storm:
+    display-name: "Soul Storm"
+    category: SOULS
+    icon: SCULK_CATALYST
+    description:
+      - "Launches waves of seeking soul bolts."
+    max-level: 2000
+    required-tool-level: 5
+    cost:
+      currency: SOULS
+      base: "11000"
+      growth: 1.135
+    chance:
+      base: 0.0007
+      per-level: 0.00001
     packet-based: true
 
   essence_finder:

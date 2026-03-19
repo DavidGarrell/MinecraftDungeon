@@ -217,8 +217,7 @@ public class DungeonListener implements Listener {
     public void onDropSword(PlayerDropItemEvent event) {
         if (swordService.isManagedSword(event.getItemDrop().getItemStack())) {
             event.setCancelled(true);
-            swordService.ensureSwordInSlot(event.getPlayer());
-            event.getPlayer().sendMessage(ChatColor.RED + "You cannot drop your dungeon sword.");
+            swordService.buyBestOnDrop(event.getPlayer());
             return;
         }
 
