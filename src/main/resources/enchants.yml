@@ -22,29 +22,6 @@ enchants:
     chance:
       base: 0.005
       per-level: 0.00002
-    damage:
-      multiplier: 2.0
-    bonus:
-      currency: SOULS
-      amount: "0"
-      target-enchant: ""
-    passive:
-      multiplier-per-level: 0.0
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: false
-      lightning: false
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   blazed_enchant:
@@ -62,29 +39,6 @@ enchants:
     chance:
       base: 0.001
       per-level: 0.00002
-    damage:
-      multiplier: 0.0
-    bonus:
-      currency: SOULS
-      amount: "0"
-      target-enchant: ""
-    passive:
-      multiplier-per-level: 0.0
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: true
-      lightning: false
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 60
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   frostbite:
@@ -102,29 +56,6 @@ enchants:
     chance:
       base: 0.001
       per-level: 0.00001
-    damage:
-      multiplier: 0.0
-    bonus:
-      currency: SOULS
-      amount: "0"
-      target-enchant: ""
-    passive:
-      multiplier-per-level: 0.0
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: false
-      lightning: false
-      freeze: true
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 60
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   phantom_strike:
@@ -142,29 +73,6 @@ enchants:
     chance:
       base: 0.002
       per-level: 0.00001
-    damage:
-      multiplier: 0.0
-    bonus:
-      currency: SOULS
-      amount: "0"
-      target-enchant: ""
-    passive:
-      multiplier-per-level: 0.0
-    effects:
-      zone-burst: false
-      phantom: true
-      fire: false
-      lightning: false
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   thor:
@@ -182,29 +90,6 @@ enchants:
     chance:
       base: 0.001
       per-level: 0.00003
-    damage:
-      multiplier: 0.0
-    bonus:
-      currency: SOULS
-      amount: "0"
-      target-enchant: ""
-    passive:
-      multiplier-per-level: 0.0
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: false
-      lightning: true
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   dragon_burst:
@@ -222,29 +107,6 @@ enchants:
     chance:
       base: 0.0005
       per-level: 0.00001
-    damage:
-      multiplier: 1.0
-    bonus:
-      currency: SOULS
-      amount: "0"
-      target-enchant: ""
-    passive:
-      multiplier-per-level: 0.0
-    effects:
-      zone-burst: true
-      phantom: false
-      fire: false
-      lightning: false
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   execute:
@@ -262,37 +124,14 @@ enchants:
     chance:
       base: 0.001
       per-level: 0.00002
-    damage:
-      multiplier: 0.05
-    bonus:
-      currency: SOULS
-      amount: "0"
-      target-enchant: ""
-    passive:
-      multiplier-per-level: 0.0
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: false
-      lightning: false
-      freeze: false
-      execute: true
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   soul_greed:
-    display-name: "Soul Greed"
+    display-name: "Soul Finder"
     category: SOULS
     icon: MAGMA_CREAM
     description:
-      - "Gain souls from hits."
+      - "Gain Souls when damaging mobs."
     max-level: 4000
     required-tool-level: 1
     cost:
@@ -302,29 +141,6 @@ enchants:
     chance:
       base: 0.0
       per-level: 0.0005
-    damage:
-      multiplier: 0.0
-    bonus:
-      currency: SOULS
-      amount: "120"
-      target-enchant: ""
-    passive:
-      multiplier-per-level: 0.0
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: false
-      lightning: false
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   soul_magnet:
@@ -332,7 +148,7 @@ enchants:
     category: SOULS
     icon: ENDER_PEARL
     description:
-      - "Boost Soul Greed rewards."
+      - "Boost Soul Finder rewards."
     max-level: 2000
     required-tool-level: 2
     cost:
@@ -342,29 +158,6 @@ enchants:
     chance:
       base: 0.0
       per-level: 0.0
-    damage:
-      multiplier: 0.0
-    bonus:
-      currency: SOULS
-      amount: "0"
-      target-enchant: "soul_greed"
-    passive:
-      multiplier-per-level: 0.0002
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: false
-      lightning: false
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   essence_finder:
@@ -382,29 +175,6 @@ enchants:
     chance:
       base: 1.0
       per-level: 0.0
-    damage:
-      multiplier: 0.0
-    bonus:
-      currency: ESSENCE
-      amount: "80"
-      target-enchant: ""
-    passive:
-      multiplier-per-level: 0.0
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: false
-      lightning: false
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   essence_magnet:
@@ -422,29 +192,6 @@ enchants:
     chance:
       base: 0.0
       per-level: 0.0
-    damage:
-      multiplier: 0.0
-    bonus:
-      currency: ESSENCE
-      amount: "0"
-      target-enchant: "essence_finder"
-    passive:
-      multiplier-per-level: 0.0005
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: false
-      lightning: false
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
 
   speed_enchant:
@@ -462,27 +209,6 @@ enchants:
     chance:
       base: 0.0
       per-level: 0.0
-    damage:
-      multiplier: 0.0
-    bonus:
-      currency: SOULS
-      amount: "0"
-      target-enchant: ""
     passive:
       multiplier-per-level: 0.05
-    effects:
-      zone-burst: false
-      phantom: false
-      fire: false
-      lightning: false
-      freeze: false
-      execute: false
-      dot-ticks: 20
-      fire-ticks: 40
-      freeze-ticks: 40
-      phantom-count: 3
-      fire-tick-multiplier: 4.0
-      freeze-tick-multiplier: 1.5
-      phantom-hit-multiplier: 3.0
-      lightning-hit-multiplier: 7.0
     packet-based: true
