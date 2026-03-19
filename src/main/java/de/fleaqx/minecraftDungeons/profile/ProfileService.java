@@ -172,7 +172,7 @@ public class ProfileService {
             ConfigurationSection messages = config.getConfigurationSection(base + ".enchants.messages");
             if (messages != null) {
                 for (String enchantId : messages.getKeys(false)) {
-                    profile.enchantMessageEnabled(enchantId, messages.getBoolean(enchantId, true));
+                    profile.enchantMessageEnabled(enchantId, messages.getBoolean(enchantId, !"soul_greed".equalsIgnoreCase(enchantId)));
                 }
             }
 

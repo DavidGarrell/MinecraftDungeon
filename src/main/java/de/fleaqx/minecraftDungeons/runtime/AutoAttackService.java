@@ -53,7 +53,8 @@ public class AutoAttackService {
     }
 
     public void lockOrToggleTarget(Player player, LivingEntity target, BigInteger baseDamage) {
-        if (!dungeonService.canPlayerAttackMob(player, target.getUniqueId())) {
+        if (!dungeonService.canPlayerAttackMob(player, target.getUniqueId())
+                || dungeonService.isAfkMobFor(player, target.getUniqueId())) {
             return;
         }
 
@@ -94,7 +95,10 @@ public class AutoAttackService {
 
             Entity entity = EntityLookup.find(state.targetId());
             LivingEntity target = null;
-            if (entity instanceof LivingEntity living && living.isValid() && dungeonService.canPlayerAttackMob(player, living.getUniqueId())) {
+            if (entity instanceof LivingEntity living
+                    && living.isValid()
+                    && dungeonService.canPlayerAttackMob(player, living.getUniqueId())
+                    && !dungeonService.isAfkMobFor(player, living.getUniqueId())) {
                 target = living;
                 state.missingTicks(0);
             } else {
@@ -147,20 +151,14 @@ public class AutoAttackService {
     }
 
     private LivingEntity findNextTarget(Player player, UUID previousTargetId) {
-        for (LivingEntity mob : dungeonService.activeOwnedMobs(player)) {
+        for (LivingEntity mob : dungeonService.activeCombatOwnedMobs(player)) {
             if (mob == null || !mob.isValid()) {
                 continue;
             }
             if (previousTargetId != null && previousTargetId.equals(mob.getUniqueId())) {
                 continue;
             }
-            if (dungeonService.canPlayerAttackMob(player, mob.getUniqueId()) && !dungeonService.isAfkMobFor(player, mob.getUniqueId())) {
-                return mob;
-            }
-        }
-
-        for (LivingEntity mob : dungeonService.activeOwnedMobs(player)) {
-            if (mob != null && mob.isValid() && dungeonService.canPlayerAttackMob(player, mob.getUniqueId())) {
+            if (dungeonService.canPlayerAttackMob(player, mob.getUniqueId())) {
                 return mob;
             }
         }

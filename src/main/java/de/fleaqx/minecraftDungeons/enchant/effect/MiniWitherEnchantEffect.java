@@ -1,6 +1,5 @@
 package de.fleaqx.minecraftDungeons.enchant.effect;
 
-import de.fleaqx.minecraftDungeons.currency.CurrencyType;
 import de.fleaqx.minecraftDungeons.enchant.EnchantDefinition;
 import de.fleaqx.minecraftDungeons.enchant.EnchantService;
 import de.fleaqx.minecraftDungeons.runtime.DamageIndicatorService;
@@ -12,12 +11,13 @@ import org.bukkit.entity.Player;
 
 import java.math.BigInteger;
 
-public final class SoulFinderEnchantEffect extends BaseEnchantEffect {
+public final class MiniWitherEnchantEffect extends BaseEnchantEffect {
 
-    private static final String ENCHANT_ID = "soul_greed";
+    private static final int WITHER_COUNT = 4;
+    private static final double WITHER_HIT_MULTIPLIER = 2.4D;
 
-    public SoulFinderEnchantEffect() {
-        super(ENCHANT_ID);
+    public MiniWitherEnchantEffect() {
+        super("mini_wither");
     }
 
     @Override
@@ -28,12 +28,8 @@ public final class SoulFinderEnchantEffect extends BaseEnchantEffect {
                              EnchantService service,
                              DungeonService dungeonService,
                              DamageIndicatorService indicatorService) {
-        BigInteger soulsGained = service.soulGreedReward(player);
-        if (soulsGained.compareTo(BigInteger.ZERO) <= 0) {
-            return;
-        }
-        player.spawnParticle(Particle.SOUL, mainTarget.getLocation().add(0, 1.0D, 0), 12, 0.25D, 0.35D, 0.25D, 0.02D);
-        player.playSound(mainTarget.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.7F, 0.8F);
-        dungeonService.addCurrency(player, CurrencyType.SOULS, soulsGained);
+        player.spawnParticle(Particle.SMOKE, mainTarget.getLocation().add(0, 1.0D, 0), 18, 0.25D, 0.35D, 0.25D, 0.01D);
+        player.playSound(mainTarget.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 0.35F, 1.8F);
+        service.applyMiniWitherBarrage(player, swordDamage, WITHER_COUNT, WITHER_HIT_MULTIPLIER, dungeonService, indicatorService);
     }
 }

@@ -149,7 +149,11 @@ public class PlayerProfile {
     }
 
     public boolean enchantMessageEnabled(String enchantId) {
-        return enchantMessageEnabled.getOrDefault(enchantId.toLowerCase(), true);
+        return enchantMessageEnabled.getOrDefault(enchantId.toLowerCase(), defaultEnchantMessageEnabled(enchantId));
+    }
+
+    private boolean defaultEnchantMessageEnabled(String enchantId) {
+        return !"soul_greed".equalsIgnoreCase(enchantId);
     }
 
     public void enchantMessageEnabled(String enchantId, boolean enabled) {

@@ -1,5 +1,6 @@
 package de.fleaqx.minecraftDungeons.enchant;
 
+import de.fleaqx.minecraftDungeons.currency.CurrencyType;
 import de.fleaqx.minecraftDungeons.enchant.effect.*;
 import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.profile.ProfileService;
@@ -7,6 +8,7 @@ import de.fleaqx.minecraftDungeons.runtime.DamageIndicatorService;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
@@ -64,7 +66,9 @@ public class EnchantService {
     public List<EnchantDefinition> byCategory(EnchantCategory category) {
         return definitions.values().stream()
                 .filter(def -> def.category() == category)
-                .sorted(Comparator.comparing(EnchantDefinition::id))
+                .sorted(Comparator.comparingInt(EnchantDefinition::requiredToolLevel)
+                        .thenComparing(EnchantDefinition::displayName, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(EnchantDefinition::id))
                 .toList();
     }
 
@@ -307,6 +311,7 @@ public class EnchantService {
         for (EnchantDefinition def : hit.triggered()) {
             EnchantEffect effect = effectFor(def.id());
             effect.applyPostHit(player, mainTarget, swordDamage, def, this, dungeonService, indicatorService);
+            grantBonusSoulsFromSoulGreed(player, mainTarget, def, dungeonService);
 
             if (enchantMessageEnabled(player, def.id())) {
                 player.sendMessage(ChatColor.GOLD + "Enchants " + ChatColor.DARK_GRAY + "> " + ChatColor.AQUA + def.displayName() + ChatColor.GRAY + " activated!");
@@ -327,6 +332,7 @@ public class EnchantService {
         registerEffect(new BlazedEnchantEffect());
         registerEffect(new FrostbiteEnchantEffect());
         registerEffect(new PhantomStrikeEnchantEffect());
+        registerEffect(new MiniWitherEnchantEffect());
         registerEffect(new ThorEnchantEffect());
         registerEffect(new DragonBurstEnchantEffect());
         registerEffect(new ExecuteEnchantEffect());
@@ -413,12 +419,12 @@ public class EnchantService {
                                     double hitMultiplier,
                                     DungeonService dungeonService,
                                     DamageIndicatorService indicatorService) {
-        List<LivingEntity> mobs = dungeonService.activeOwnedMobs(player);
+        List<LivingEntity> mobs = dungeonService.activeCombatOwnedMobs(player);
         if (mobs.isEmpty()) {
             return;
         }
 
-        BigInteger dmg = scaleDamage(swordDamage, hitMultiplier);
+        BigInteger damage = scaleDamage(swordDamage, hitMultiplier);
         int hits = Math.max(1, count);
         for (int i = 0; i < hits; i++) {
             LivingEntity target = mobs.get(ThreadLocalRandom.current().nextInt(mobs.size()));
@@ -426,19 +432,36 @@ public class EnchantService {
                 continue;
             }
 
-            spawnPhantomTrail(player, target);
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    if (!player.isOnline() || !target.isValid()) {
-                        return;
-                    }
-                    DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, target, dmg);
-                    if (result.accepted()) {
-                        indicatorService.spawnDamage(player, target, dmg);
-                    }
-                }
-            }.runTaskLater(plugin, 12L);
+            Location start = phantomStart(player, i, hits);
+            launchPacketProjectile(player, start, target, damage, dungeonService, indicatorService,
+                    Particle.SOUL_FIRE_FLAME, Particle.CLOUD, Sound.ENTITY_PHANTOM_FLAP, Sound.ENTITY_PHANTOM_BITE, 12, 0.85D);
+        }
+    }
+
+    public void applyMiniWitherBarrage(Player player,
+                                       BigInteger swordDamage,
+                                       int count,
+                                       double hitMultiplier,
+                                       DungeonService dungeonService,
+                                       DamageIndicatorService indicatorService) {
+        List<LivingEntity> mobs = dungeonService.activeCombatOwnedMobs(player);
+        if (mobs.isEmpty()) {
+            return;
+        }
+
+        BigInteger damage = scaleDamage(swordDamage, hitMultiplier);
+        int shots = Math.max(1, count);
+        for (int i = 0; i < shots; i++) {
+            LivingEntity target = mobs.get(i % mobs.size());
+            if (!target.isValid()) {
+                continue;
+            }
+
+            Location start = witherStart(player, i, shots);
+            player.spawnParticle(Particle.SMOKE, start, 8, 0.12D, 0.12D, 0.12D, 0.0D);
+            player.spawnParticle(Particle.ENCHANT, start, 4, 0.04D, 0.04D, 0.04D, 0.0D);
+            launchPacketProjectile(player, start, target, damage, dungeonService, indicatorService,
+                    Particle.SMOKE, Particle.ENCHANT, Sound.ENTITY_WITHER_SHOOT, Sound.ENTITY_WITHER_HURT, 10, 0.25D);
         }
     }
 
@@ -448,7 +471,7 @@ public class EnchantService {
                                       DungeonService dungeonService,
                                       DamageIndicatorService indicatorService) {
         BigInteger dmg = scaleDamage(swordDamage, hitMultiplier);
-        for (LivingEntity mob : dungeonService.activeOwnedMobs(player)) {
+        for (LivingEntity mob : dungeonService.activeCombatOwnedMobs(player)) {
             if (!mob.isValid()) {
                 continue;
             }
@@ -461,14 +484,93 @@ public class EnchantService {
         }
     }
 
-    private void spawnPhantomTrail(Player player, LivingEntity target) {
-        Vector from = player.getEyeLocation().toVector();
-        Vector to = target.getLocation().add(0, 0.6, 0).toVector();
-        Vector step = to.clone().subtract(from).multiply(1.0 / 10.0);
-        for (int i = 0; i <= 10; i++) {
-            Vector point = from.clone().add(step.clone().multiply(i));
-            player.spawnParticle(Particle.SOUL_FIRE_FLAME, point.getX(), point.getY(), point.getZ(), 2, 0.05, 0.05, 0.05, 0.0);
+    public BigInteger soulGreedReward(Player player) {
+        BigInteger reward = BigInteger.valueOf(120L);
+        int soulGreedLevel = enchantLevel(player, "soul_greed");
+        if (soulGreedLevel <= 0 || !enchantEnabled(player, "soul_greed")) {
+            return BigInteger.ZERO;
         }
+
+        int soulMagnetLevel = enchantLevel(player, "soul_magnet");
+        if (soulMagnetLevel > 0 && enchantEnabled(player, "soul_magnet")) {
+            reward = scaleDamage(reward, 1.0D + (0.0002D * soulMagnetLevel));
+        }
+        return reward;
+    }
+
+    private void grantBonusSoulsFromSoulGreed(Player player, LivingEntity target, EnchantDefinition triggeredDef, DungeonService dungeonService) {
+        if ("soul_greed".equalsIgnoreCase(triggeredDef.id())) {
+            return;
+        }
+
+        BigInteger soulGreedReward = soulGreedReward(player);
+        if (soulGreedReward.compareTo(BigInteger.ZERO) <= 0) {
+            return;
+        }
+
+        BigInteger bonusSouls = scaleDamage(soulGreedReward, 0.10D).max(BigInteger.ONE);
+        dungeonService.addCurrency(player, CurrencyType.SOULS, bonusSouls);
+        player.spawnParticle(Particle.ENCHANT, target.getLocation().add(0, 1.1D, 0), 8, 0.18D, 0.18D, 0.18D, 0.2D);
+    }
+
+    private Location phantomStart(Player player, int index, int total) {
+        double angle = (Math.PI * 2.0D * index) / Math.max(1, total);
+        Location base = player.getEyeLocation().clone();
+        return base.add(Math.cos(angle) * 0.75D, 0.2D, Math.sin(angle) * 0.75D);
+    }
+
+    private Location witherStart(Player player, int index, int total) {
+        double angle = (Math.PI * 2.0D * index) / Math.max(1, total);
+        Location base = player.getEyeLocation().clone();
+        return base.add(Math.cos(angle) * 1.25D, 0.45D, Math.sin(angle) * 1.25D);
+    }
+
+    private void launchPacketProjectile(Player player,
+                                        Location start,
+                                        LivingEntity target,
+                                        BigInteger damage,
+                                        DungeonService dungeonService,
+                                        DamageIndicatorService indicatorService,
+                                        Particle coreParticle,
+                                        Particle trailParticle,
+                                        Sound launchSound,
+                                        Sound impactSound,
+                                        int steps,
+                                        double arcHeight) {
+        if (start == null || start.getWorld() == null || damage.compareTo(BigInteger.ZERO) <= 0) {
+            return;
+        }
+
+        Vector from = start.toVector();
+        player.playSound(start, launchSound, 0.5F, 1.5F);
+        new BukkitRunnable() {
+            private int step = 0;
+
+            @Override
+            public void run() {
+                if (!player.isOnline() || !target.isValid()) {
+                    cancel();
+                    return;
+                }
+
+                Vector to = target.getLocation().add(0, 0.65D, 0).toVector();
+                double progress = Math.min(1.0D, step / (double) Math.max(1, steps));
+                Vector point = from.clone().multiply(1.0D - progress).add(to.clone().multiply(progress));
+                point.setY(point.getY() + Math.sin(progress * Math.PI) * arcHeight);
+
+                player.spawnParticle(coreParticle, point.getX(), point.getY(), point.getZ(), 5, 0.08D, 0.08D, 0.08D, 0.0D);
+                player.spawnParticle(trailParticle, point.getX(), point.getY(), point.getZ(), 2, 0.03D, 0.03D, 0.03D, 0.0D);
+
+                if (step++ >= steps) {
+                    player.playSound(target.getLocation(), impactSound, 0.45F, 1.7F);
+                    DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, target, damage);
+                    if (result.accepted()) {
+                        indicatorService.spawnDamage(player, target, damage);
+                    }
+                    cancel();
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     private BigInteger toolXpRequiredNextRaw(int level) {
