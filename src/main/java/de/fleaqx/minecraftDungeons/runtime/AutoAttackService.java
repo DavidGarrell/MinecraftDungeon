@@ -141,7 +141,7 @@ public class AutoAttackService {
             return;
         }
 
-        damageIndicatorService.spawnDamage(player, target, hit.totalDamage());
+        damageIndicatorService.spawnDamage(player, target, hit.totalDamage(), enchantService.primaryHitIndicatorStyle(hit));
         enchantService.applyPostHit(player, target, state.damage(), hit, dungeonService, damageIndicatorService);
         enchantService.grantHitXp(player);
 
@@ -151,7 +151,7 @@ public class AutoAttackService {
     }
 
     private LivingEntity findNextTarget(Player player, UUID previousTargetId) {
-        for (LivingEntity mob : dungeonService.activeCombatOwnedMobs(player)) {
+        for (LivingEntity mob : dungeonService.activeAttackableOwnedMobs(player)) {
             if (mob == null || !mob.isValid()) {
                 continue;
             }

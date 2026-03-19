@@ -1,16 +1,22 @@
 package de.fleaqx.minecraftDungeons.enchant;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
+import com.comphenix.protocol.events.PacketContainer;
 import de.fleaqx.minecraftDungeons.currency.CurrencyType;
 import de.fleaqx.minecraftDungeons.enchant.effect.*;
 import de.fleaqx.minecraftDungeons.profile.PlayerProfile;
 import de.fleaqx.minecraftDungeons.profile.ProfileService;
 import de.fleaqx.minecraftDungeons.runtime.DamageIndicatorService;
+import de.fleaqx.minecraftDungeons.runtime.DamageIndicatorService.Style;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
 import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -21,12 +27,15 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class EnchantService {
@@ -42,11 +51,26 @@ public class EnchantService {
     private double xpGrowth = 1.15D;
     private double maxActivationChance = 1.0D;
     private SwordPerkService swordPerkService;
+    private final AtomicInteger packetEntityIds = new AtomicInteger(2_000_000);
+    private final boolean protocolLibAvailable;
+    private final ProtocolManager protocolManager;
 
     public EnchantService(JavaPlugin plugin, EnchantConfigService configService, ProfileService profileService) {
         this.plugin = plugin;
         this.configService = configService;
         this.profileService = profileService;
+        ProtocolManager manager = null;
+        boolean protocolAvailable = false;
+        try {
+            protocolAvailable = plugin.getServer().getPluginManager().isPluginEnabled("ProtocolLib");
+            if (protocolAvailable) {
+                manager = ProtocolLibrary.getProtocolManager();
+            }
+        } catch (Throwable ignored) {
+            protocolAvailable = false;
+        }
+        this.protocolLibAvailable = protocolAvailable && manager != null;
+        this.protocolManager = manager;
         bootstrapEffects();
     }
 
@@ -371,6 +395,7 @@ public class EnchantService {
     public void applyDotTicks(Player player,
                                LivingEntity target,
                                BigInteger swordDamage,
+                               EnchantDefinition definition,
                                DungeonService dungeonService,
                                DamageIndicatorService indicatorService,
                                double tickMultiplier,
@@ -404,7 +429,7 @@ public class EnchantService {
                     return;
                 }
 
-                indicatorService.spawnDamage(player, target, perTickDamage);
+                indicatorService.spawnDamage(player, target, perTickDamage, indicatorStyle(definition));
                 if (result.dead()) {
                     cancel();
                 }
@@ -417,9 +442,10 @@ public class EnchantService {
                                     BigInteger swordDamage,
                                     int count,
                                     double hitMultiplier,
+                                    EnchantDefinition definition,
                                     DungeonService dungeonService,
                                     DamageIndicatorService indicatorService) {
-        List<LivingEntity> mobs = dungeonService.activeCombatOwnedMobs(player);
+        List<LivingEntity> mobs = dungeonService.activeAttackableOwnedMobs(player);
         if (mobs.isEmpty()) {
             return;
         }
@@ -433,8 +459,15 @@ public class EnchantService {
             }
 
             Location start = phantomStart(player, i, hits);
+            if (protocolLibAvailable) {
+                launchPacketMob(player, start, target, damage, dungeonService, indicatorService,
+                        EntityType.PHANTOM, Sound.ENTITY_PHANTOM_FLAP, Sound.ENTITY_PHANTOM_BITE, 12, 0.85D,
+                        Particle.SOUL_FIRE_FLAME, Particle.CLOUD, indicatorStyle(definition));
+                continue;
+            }
+
             launchPacketProjectile(player, start, target, damage, dungeonService, indicatorService,
-                    Particle.SOUL_FIRE_FLAME, Particle.CLOUD, Sound.ENTITY_PHANTOM_FLAP, Sound.ENTITY_PHANTOM_BITE, 12, 0.85D);
+                    Particle.SOUL_FIRE_FLAME, Particle.CLOUD, Sound.ENTITY_PHANTOM_FLAP, Sound.ENTITY_PHANTOM_BITE, 12, 0.85D, indicatorStyle(definition));
         }
     }
 
@@ -442,9 +475,10 @@ public class EnchantService {
                                        BigInteger swordDamage,
                                        int count,
                                        double hitMultiplier,
+                                       EnchantDefinition definition,
                                        DungeonService dungeonService,
                                        DamageIndicatorService indicatorService) {
-        List<LivingEntity> mobs = dungeonService.activeCombatOwnedMobs(player);
+        List<LivingEntity> mobs = dungeonService.activeAttackableOwnedMobs(player);
         if (mobs.isEmpty()) {
             return;
         }
@@ -460,18 +494,25 @@ public class EnchantService {
             Location start = witherStart(player, i, shots);
             player.spawnParticle(Particle.SMOKE, start, 8, 0.12D, 0.12D, 0.12D, 0.0D);
             player.spawnParticle(Particle.ENCHANT, start, 4, 0.04D, 0.04D, 0.04D, 0.0D);
+            if (protocolLibAvailable) {
+                launchPacketMob(player, start, target, damage, dungeonService, indicatorService,
+                        EntityType.WITHER, Sound.ENTITY_WITHER_SHOOT, Sound.ENTITY_WITHER_HURT, 10, 0.25D,
+                        Particle.SMOKE, Particle.ENCHANT, indicatorStyle(definition));
+                continue;
+            }
             launchPacketProjectile(player, start, target, damage, dungeonService, indicatorService,
-                    Particle.SMOKE, Particle.ENCHANT, Sound.ENTITY_WITHER_SHOOT, Sound.ENTITY_WITHER_HURT, 10, 0.25D);
+                    Particle.SMOKE, Particle.ENCHANT, Sound.ENTITY_WITHER_SHOOT, Sound.ENTITY_WITHER_HURT, 10, 0.25D, indicatorStyle(definition));
         }
     }
 
     public void applyLightningStrike(Player player,
                                       BigInteger swordDamage,
                                       double hitMultiplier,
+                                      EnchantDefinition definition,
                                       DungeonService dungeonService,
                                       DamageIndicatorService indicatorService) {
         BigInteger dmg = scaleDamage(swordDamage, hitMultiplier);
-        for (LivingEntity mob : dungeonService.activeCombatOwnedMobs(player)) {
+        for (LivingEntity mob : dungeonService.activeAttackableOwnedMobs(player)) {
             if (!mob.isValid()) {
                 continue;
             }
@@ -479,7 +520,7 @@ public class EnchantService {
             player.playSound(mob.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, 0.6F, 1.4F);
             DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, mob, dmg);
             if (result.accepted()) {
-                indicatorService.spawnDamage(player, mob, dmg);
+                indicatorService.spawnDamage(player, mob, dmg, indicatorStyle(definition));
             }
         }
     }
@@ -513,6 +554,44 @@ public class EnchantService {
         player.spawnParticle(Particle.ENCHANT, target.getLocation().add(0, 1.1D, 0), 8, 0.18D, 0.18D, 0.18D, 0.2D);
     }
 
+    public boolean protocolLibAvailable() {
+        return protocolLibAvailable;
+    }
+
+
+    public Style primaryHitIndicatorStyle(EnchantHitResult hit) {
+        if (hit == null || hit.triggered() == null) {
+            return null;
+        }
+
+        for (EnchantDefinition definition : hit.triggered()) {
+            if ("critical_enchant".equalsIgnoreCase(definition.id())) {
+                return indicatorStyle(definition);
+            }
+        }
+        return null;
+    }
+
+    public Style indicatorStyle(EnchantDefinition definition) {
+        if (definition == null) {
+            return null;
+        }
+
+        return switch (definition.id().toLowerCase(Locale.ROOT)) {
+            case "critical_enchant" -> new Style(ChatColor.GOLD, "✦", true);
+            case "blazed_enchant" -> new Style(ChatColor.GOLD, "✹", true);
+            case "frostbite" -> new Style(ChatColor.AQUA, "❄", true);
+            case "phantom_strike" -> new Style(ChatColor.DARK_AQUA, "✧", true);
+            case "mini_wither" -> new Style(ChatColor.DARK_GRAY, "☠", true);
+            case "thor" -> new Style(ChatColor.YELLOW, "⚡", true);
+            case "dragon_burst" -> new Style(ChatColor.LIGHT_PURPLE, "☄", true);
+            case "execute" -> new Style(ChatColor.DARK_RED, "✖", true);
+            case "soul_greed" -> new Style(ChatColor.DARK_AQUA, "✦", false);
+            case "essence_finder" -> new Style(ChatColor.BLUE, "✧", false);
+            default -> null;
+        };
+    }
+
     private Location phantomStart(Player player, int index, int total) {
         double angle = (Math.PI * 2.0D * index) / Math.max(1, total);
         Location base = player.getEyeLocation().clone();
@@ -523,6 +602,122 @@ public class EnchantService {
         double angle = (Math.PI * 2.0D * index) / Math.max(1, total);
         Location base = player.getEyeLocation().clone();
         return base.add(Math.cos(angle) * 1.25D, 0.45D, Math.sin(angle) * 1.25D);
+    }
+
+
+    private void launchPacketMob(Player player,
+                                 Location start,
+                                 LivingEntity target,
+                                 BigInteger damage,
+                                 DungeonService dungeonService,
+                                 DamageIndicatorService indicatorService,
+                                 EntityType entityType,
+                                 Sound launchSound,
+                                 Sound impactSound,
+                                 int steps,
+                                 double arcHeight,
+                                 Particle trailParticle,
+                                 Particle impactParticle,
+                                 Style style) {
+        if (!protocolLibAvailable || protocolManager == null || start == null || start.getWorld() == null || damage.compareTo(BigInteger.ZERO) <= 0) {
+            launchPacketProjectile(player, start, target, damage, dungeonService, indicatorService, trailParticle, impactParticle, launchSound, impactSound, steps, arcHeight, style);
+            return;
+        }
+
+        int entityId = packetEntityIds.incrementAndGet();
+        UUID uuid = UUID.randomUUID();
+        sendSpawnEntityPacket(player, entityId, uuid, entityType, start);
+        player.playSound(start, launchSound, 0.5F, 1.5F);
+
+        Vector from = start.toVector();
+        new BukkitRunnable() {
+            private int step = 0;
+
+            @Override
+            public void run() {
+                if (!player.isOnline() || !target.isValid()) {
+                    sendDestroyEntityPacket(player, entityId);
+                    cancel();
+                    return;
+                }
+
+                Vector to = target.getLocation().add(0, 0.65D, 0).toVector();
+                double progress = Math.min(1.0D, step / (double) Math.max(1, steps));
+                Vector point = from.clone().multiply(1.0D - progress).add(to.clone().multiply(progress));
+                point.setY(point.getY() + Math.sin(progress * Math.PI) * arcHeight);
+                Location location = new Location(start.getWorld(), point.getX(), point.getY(), point.getZ());
+                Vector direction = to.clone().subtract(point);
+                if (direction.lengthSquared() > 0.0001D) {
+                    location.setDirection(direction);
+                }
+
+                sendTeleportEntityPacket(player, entityId, location);
+                player.spawnParticle(trailParticle, point.getX(), point.getY(), point.getZ(), 2, 0.05D, 0.05D, 0.05D, 0.0D);
+
+                if (step++ >= steps) {
+                    sendDestroyEntityPacket(player, entityId);
+                    player.playSound(target.getLocation(), impactSound, 0.45F, 1.7F);
+                    player.spawnParticle(impactParticle, target.getLocation().add(0, 0.8D, 0), 12, 0.18D, 0.18D, 0.18D, 0.01D);
+                    DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, target, damage);
+                    if (result.accepted()) {
+                        indicatorService.spawnDamage(player, target, damage, style);
+                    }
+                    cancel();
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void sendSpawnEntityPacket(Player player, int entityId, UUID uuid, EntityType entityType, Location location) {
+        try {
+            PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.SPAWN_ENTITY);
+            packet.getIntegers().writeSafely(0, entityId);
+            packet.getUUIDs().writeSafely(0, uuid);
+            packet.getEntityTypeModifier().writeSafely(0, entityType);
+            packet.getDoubles().writeSafely(0, location.getX());
+            packet.getDoubles().writeSafely(1, location.getY());
+            packet.getDoubles().writeSafely(2, location.getZ());
+            packet.getBytes().writeSafely(0, angleToByte(location.getYaw()));
+            packet.getBytes().writeSafely(1, angleToByte(location.getPitch()));
+            packet.getBytes().writeSafely(2, angleToByte(location.getYaw()));
+            if (packet.getIntegers().size() > 1) {
+                packet.getIntegers().writeSafely(1, 0);
+            }
+            protocolManager.sendServerPacket(player, packet);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void sendTeleportEntityPacket(Player player, int entityId, Location location) {
+        try {
+            PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.ENTITY_TELEPORT);
+            packet.getIntegers().writeSafely(0, entityId);
+            packet.getDoubles().writeSafely(0, location.getX());
+            packet.getDoubles().writeSafely(1, location.getY());
+            packet.getDoubles().writeSafely(2, location.getZ());
+            packet.getBytes().writeSafely(0, angleToByte(location.getYaw()));
+            packet.getBytes().writeSafely(1, angleToByte(location.getPitch()));
+            packet.getBooleans().writeSafely(0, false);
+            protocolManager.sendServerPacket(player, packet);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void sendDestroyEntityPacket(Player player, int entityId) {
+        try {
+            PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.ENTITY_DESTROY);
+            if (packet.getIntLists().size() > 0) {
+                packet.getIntLists().write(0, Collections.singletonList(entityId));
+            } else if (packet.getIntegerArrays().size() > 0) {
+                packet.getIntegerArrays().write(0, new int[]{entityId});
+            }
+            protocolManager.sendServerPacket(player, packet);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private byte angleToByte(float angle) {
+        return (byte) Math.floorMod((int) Math.round(angle * 256.0F / 360.0F), 256);
     }
 
     private void launchPacketProjectile(Player player,
@@ -536,7 +731,8 @@ public class EnchantService {
                                         Sound launchSound,
                                         Sound impactSound,
                                         int steps,
-                                        double arcHeight) {
+                                        double arcHeight,
+                                        Style style) {
         if (start == null || start.getWorld() == null || damage.compareTo(BigInteger.ZERO) <= 0) {
             return;
         }
@@ -565,7 +761,7 @@ public class EnchantService {
                     player.playSound(target.getLocation(), impactSound, 0.45F, 1.7F);
                     DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, target, damage);
                     if (result.accepted()) {
-                        indicatorService.spawnDamage(player, target, damage);
+                        indicatorService.spawnDamage(player, target, damage, style);
                     }
                     cancel();
                 }

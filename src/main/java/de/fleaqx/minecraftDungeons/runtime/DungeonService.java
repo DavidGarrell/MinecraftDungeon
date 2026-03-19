@@ -485,19 +485,32 @@ public class DungeonService {
                 .toList();
     }
 
+    public List<LivingEntity> activeAttackableOwnedMobs(Player player) {
+        List<LivingEntity> combat = activeCombatOwnedMobs(player);
+        return combat.isEmpty() ? activeOwnedMobs(player) : combat;
+    }
+
     public void damageOwnedMobs(Player player, BigInteger damage, UUID excludeEntityId, DamageIndicatorService indicatorService) {
-        for (LivingEntity mob : activeCombatOwnedMobs(player)) {
+        damageOwnedMobs(player, damage, excludeEntityId, indicatorService, null);
+    }
+
+    public void damageOwnedMobs(Player player, BigInteger damage, UUID excludeEntityId, DamageIndicatorService indicatorService, DamageIndicatorService.Style style) {
+        for (LivingEntity mob : activeAttackableOwnedMobs(player)) {
             if (excludeEntityId != null && excludeEntityId.equals(mob.getUniqueId())) {
                 continue;
             }
             AttackResult result = onPlayerDamageMob(player, mob, damage);
             if (result.accepted()) {
-                indicatorService.spawnDamage(player, mob, damage);
+                indicatorService.spawnDamage(player, mob, damage, style);
             }
         }
     }
 
     public void executeDamage(Player player, LivingEntity target, double multiplier, DamageIndicatorService indicatorService) {
+        executeDamage(player, target, multiplier, indicatorService, null);
+    }
+
+    public void executeDamage(Player player, LivingEntity target, double multiplier, DamageIndicatorService indicatorService, DamageIndicatorService.Style style) {
         VirtualHealthService.VirtualHealth health = virtualHealthService.get(target.getUniqueId());
         if (health == null) {
             return;
@@ -506,7 +519,7 @@ public class DungeonService {
         BigInteger executeDamage = scaled.setScale(0, RoundingMode.DOWN).toBigInteger().max(BigInteger.ONE);
         AttackResult result = onPlayerDamageMob(player, target, executeDamage);
         if (result.accepted()) {
-            indicatorService.spawnDamage(player, target, executeDamage);
+            indicatorService.spawnDamage(player, target, executeDamage, style);
         }
     }
     private void tickPlayerZone(Player player) {

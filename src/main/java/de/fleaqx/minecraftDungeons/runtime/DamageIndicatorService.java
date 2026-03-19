@@ -16,6 +16,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class DamageIndicatorService {
 
+    private static final Style DEFAULT_DAMAGE_STYLE = new Style(ChatColor.RED, "\u2764", false);
+
     private final JavaPlugin plugin;
 
     public DamageIndicatorService(JavaPlugin plugin) {
@@ -23,10 +25,16 @@ public class DamageIndicatorService {
     }
 
     public void spawnDamage(Player viewer, Entity target, BigInteger damage) {
+        spawnDamage(viewer, target, damage, DEFAULT_DAMAGE_STYLE);
+    }
+
+    public void spawnDamage(Player viewer, Entity target, BigInteger damage, Style style) {
         Location base = target.getLocation().clone().add(0, 0.6, 0);
         Location spawn = base.add(randomOffset(0.6), ThreadLocalRandom.current().nextDouble(0.0, 0.45), randomOffset(0.6));
         Vector velocity = randomDirection().multiply(0.07).setY(ThreadLocalRandom.current().nextDouble(0.03, 0.07));
-        spawnText(viewer, spawn, ChatColor.RED + "\u2764" + NumberFormat.compact(damage), velocity, 30, 0.92);
+        Style damageStyle = style == null ? DEFAULT_DAMAGE_STYLE : style;
+        String prefix = damageStyle.bold() ? ChatColor.BOLD.toString() : "";
+        spawnText(viewer, spawn, damageStyle.color() + prefix + damageStyle.icon() + NumberFormat.compact(damage), velocity, 30, 0.92);
     }
 
     public void spawnReward(Player viewer, Entity target, String text) {
@@ -88,5 +96,8 @@ public class DamageIndicatorService {
 
     private double randomOffset(double max) {
         return ThreadLocalRandom.current().nextDouble(-max, max);
+    }
+
+    public record Style(ChatColor color, String icon, boolean bold) {
     }
 }

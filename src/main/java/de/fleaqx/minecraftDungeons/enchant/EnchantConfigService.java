@@ -10,6 +10,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,10 +35,51 @@ public class EnchantConfigService {
             plugin.saveResource("enchants.yml", false);
         }
         reloadFile();
+        mergeMissingDefaults();
     }
 
     public void reloadFile() {
         this.config = YamlConfiguration.loadConfiguration(file);
+    }
+
+    private void mergeMissingDefaults() {
+        if (plugin.getResource("enchants.yml") == null) {
+            return;
+        }
+
+        FileConfiguration defaults = YamlConfiguration.loadConfiguration(
+                new InputStreamReader(plugin.getResource("enchants.yml"), StandardCharsets.UTF_8)
+        );
+
+        boolean changed = false;
+        ConfigurationSection liveEnchants = config.getConfigurationSection("enchants");
+        ConfigurationSection defaultEnchants = defaults.getConfigurationSection("enchants");
+        if (liveEnchants == null && defaultEnchants != null) {
+            config.set("enchants", defaults.getConfigurationSection("enchants"));
+            changed = true;
+        } else if (liveEnchants != null && defaultEnchants != null) {
+            for (String enchantId : defaultEnchants.getKeys(false)) {
+                if (liveEnchants.contains(enchantId)) {
+                    continue;
+                }
+                config.set("enchants." + enchantId, defaultEnchants.get(enchantId));
+                changed = true;
+            }
+        }
+
+        if (!config.contains("tool")) {
+            config.set("tool", defaults.getConfigurationSection("tool"));
+            changed = true;
+        }
+        if (!config.contains("limits")) {
+            config.set("limits", defaults.getConfigurationSection("limits"));
+            changed = true;
+        }
+
+        if (changed) {
+            save();
+            reloadFile();
+        }
     }
 
     public Map<String, EnchantDefinition> load() {

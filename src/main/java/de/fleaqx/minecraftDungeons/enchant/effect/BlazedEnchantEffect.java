@@ -31,7 +31,7 @@ public final class BlazedEnchantEffect extends BaseEnchantEffect {
                              DamageIndicatorService indicatorService) {
         player.spawnParticle(Particle.FLAME, mainTarget.getLocation().add(0, 1.0D, 0), 20, 0.3D, 0.5D, 0.3D, 0.03D);
         player.playSound(mainTarget.getLocation(), Sound.ITEM_FIRECHARGE_USE, 0.7F, 1.0F);
-        service.applyDotTicks(player, mainTarget, swordDamage, dungeonService, indicatorService,
+        service.applyDotTicks(player, mainTarget, swordDamage, definition, dungeonService, indicatorService,
                 FIRE_TICK_MULTIPLIER, DOT_TICKS, FIRE_TICKS, true);
     }
 }
