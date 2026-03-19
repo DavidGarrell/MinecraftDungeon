@@ -23,11 +23,12 @@ public abstract class BaseEnchantEffect implements EnchantEffect {
     }
 
     @Override
-    public BigInteger extraDamage(Player player, LivingEntity target, BigInteger swordDamage, EnchantDefinition definition, EnchantService service) {
-        if (definition.damageMultiplier() <= 0.0D) {
-            return BigInteger.ZERO;
-        }
-        return service.scaleDamage(swordDamage, definition.damageMultiplier());
+    public BigInteger extraDamage(Player player,
+                                  LivingEntity target,
+                                  BigInteger swordDamage,
+                                  EnchantDefinition definition,
+                                  EnchantService service) {
+        return BigInteger.ZERO;
     }
 
     @Override
@@ -38,34 +39,5 @@ public abstract class BaseEnchantEffect implements EnchantEffect {
                              EnchantService service,
                              DungeonService dungeonService,
                              DamageIndicatorService indicatorService) {
-        service.applyCurrencyBonus(player, definition, dungeonService);
-
-        if (definition.hitsAllZoneMobs()) {
-            BigInteger zoneDamage = service.scaleDamage(swordDamage,
-                    Math.max(0.1D, definition.damageMultiplier() <= 0.0D ? 1.0D : definition.damageMultiplier()));
-            dungeonService.damageOwnedMobs(player, zoneDamage, mainTarget.getUniqueId(), indicatorService);
-        }
-
-        if (definition.executeEffect()) {
-            dungeonService.executeDamage(player, mainTarget, definition.damageMultiplier(), indicatorService);
-        }
-
-        if (definition.fireEffect()) {
-            service.applyDotTicks(player, mainTarget, swordDamage, dungeonService, indicatorService,
-                    definition.fireTickMultiplier(), definition.dotTicks(), definition.fireTicks(), true);
-        }
-
-        if (definition.freezeEffect()) {
-            service.applyDotTicks(player, mainTarget, swordDamage, dungeonService, indicatorService,
-                    definition.freezeTickMultiplier(), definition.dotTicks(), definition.freezeTicks(), false);
-        }
-
-        if (definition.phantomEffect()) {
-            service.applyPhantomStrike(player, swordDamage, definition.phantomCount(), definition.phantomHitMultiplier(), dungeonService, indicatorService);
-        }
-
-        if (definition.lightningEffect()) {
-            service.applyLightningStrike(player, swordDamage, definition.lightningHitMultiplier(), dungeonService, indicatorService);
-        }
     }
 }

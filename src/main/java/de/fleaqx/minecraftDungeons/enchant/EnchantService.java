@@ -330,7 +330,7 @@ public class EnchantService {
         registerEffect(new ThorEnchantEffect());
         registerEffect(new DragonBurstEnchantEffect());
         registerEffect(new ExecuteEnchantEffect());
-        registerEffect(new SoulGreedEnchantEffect());
+        registerEffect(new SoulFinderEnchantEffect());
         registerEffect(new SoulMagnetEnchantEffect());
         registerEffect(new EssenceFinderEnchantEffect());
         registerEffect(new EssenceMagnetEnchantEffect());
@@ -345,7 +345,6 @@ public class EnchantService {
         if (def.bonusAmount().compareTo(BigInteger.ZERO) <= 0) {
             return;
         }
-
         BigInteger bonus = def.bonusAmount();
         for (EnchantDefinition enhancer : definitions.values()) {
             if (enhancer.bonusTargetEnchant() == null || enhancer.bonusTargetEnchant().isBlank()) {
@@ -360,7 +359,6 @@ public class EnchantService {
             }
             bonus = scaleDamage(bonus, 1.0D + (enhancer.passiveMultiplier() * lvl));
         }
-
         dungeonService.addCurrency(player, def.bonusCurrency(), bonus);
     }
 

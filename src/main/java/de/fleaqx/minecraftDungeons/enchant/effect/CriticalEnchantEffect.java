@@ -4,6 +4,8 @@ import de.fleaqx.minecraftDungeons.enchant.EnchantDefinition;
 import de.fleaqx.minecraftDungeons.enchant.EnchantService;
 import de.fleaqx.minecraftDungeons.runtime.DamageIndicatorService;
 import de.fleaqx.minecraftDungeons.runtime.DungeonService;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
@@ -11,13 +13,19 @@ import java.math.BigInteger;
 
 public final class CriticalEnchantEffect extends BaseEnchantEffect {
 
+    private static final double CRITICAL_DAMAGE_MULTIPLIER = 2.0D;
+
     public CriticalEnchantEffect() {
         super("critical_enchant");
     }
 
     @Override
-    public BigInteger extraDamage(Player player, LivingEntity target, BigInteger swordDamage, EnchantDefinition definition, EnchantService service) {
-        return super.extraDamage(player, target, swordDamage, definition, service);
+    public BigInteger extraDamage(Player player,
+                                  LivingEntity target,
+                                  BigInteger swordDamage,
+                                  EnchantDefinition definition,
+                                  EnchantService service) {
+        return service.scaleDamage(swordDamage, CRITICAL_DAMAGE_MULTIPLIER);
     }
 
     @Override
@@ -28,6 +36,7 @@ public final class CriticalEnchantEffect extends BaseEnchantEffect {
                              EnchantService service,
                              DungeonService dungeonService,
                              DamageIndicatorService indicatorService) {
-        super.applyPostHit(player, mainTarget, swordDamage, definition, service, dungeonService, indicatorService);
+        player.spawnParticle(Particle.CRIT, mainTarget.getLocation().add(0, 1.0D, 0), 14, 0.25D, 0.35D, 0.25D, 0.02D);
+        player.playSound(mainTarget.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 0.8F, 1.15F);
     }
 }
