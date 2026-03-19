@@ -53,8 +53,7 @@ public class AutoAttackService {
     }
 
     public void lockOrToggleTarget(Player player, LivingEntity target, BigInteger baseDamage) {
-        if (!dungeonService.canPlayerAttackMob(player, target.getUniqueId())
-                || dungeonService.isAfkMobFor(player, target.getUniqueId())) {
+        if (!dungeonService.canPlayerAttackMob(player, target.getUniqueId())) {
             return;
         }
 
@@ -97,8 +96,7 @@ public class AutoAttackService {
             LivingEntity target = null;
             if (entity instanceof LivingEntity living
                     && living.isValid()
-                    && dungeonService.canPlayerAttackMob(player, living.getUniqueId())
-                    && !dungeonService.isAfkMobFor(player, living.getUniqueId())) {
+                    && dungeonService.canPlayerAttackMob(player, living.getUniqueId())) {
                 target = living;
                 state.missingTicks(0);
             } else {
