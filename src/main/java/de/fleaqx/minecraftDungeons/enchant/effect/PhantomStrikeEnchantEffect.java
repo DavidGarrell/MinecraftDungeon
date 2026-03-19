@@ -30,6 +30,8 @@ public final class PhantomStrikeEnchantEffect extends BaseEnchantEffect {
                              DamageIndicatorService indicatorService) {
         player.spawnParticle(Particle.SOUL_FIRE_FLAME, mainTarget.getLocation().add(0, 1.0D, 0), 14, 0.25D, 0.25D, 0.25D, 0.02D);
         player.playSound(mainTarget.getLocation(), Sound.ENTITY_PHANTOM_FLAP, 0.45F, 1.6F);
-        service.applyPhantomStrike(player, swordDamage, PHANTOM_COUNT, PHANTOM_HIT_MULTIPLIER, dungeonService, indicatorService);
+        int phantomCount = definition.phantomCount() > 0 ? definition.phantomCount() : PHANTOM_COUNT;
+        double phantomMultiplier = definition.phantomHitMultiplier() > 0.0D ? definition.phantomHitMultiplier() : PHANTOM_HIT_MULTIPLIER;
+        service.applyPhantomStrike(player, swordDamage, phantomCount, phantomMultiplier, definition, dungeonService, indicatorService);
     }
 }

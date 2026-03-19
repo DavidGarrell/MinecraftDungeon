@@ -30,6 +30,8 @@ public final class MiniWitherEnchantEffect extends BaseEnchantEffect {
                              DamageIndicatorService indicatorService) {
         player.spawnParticle(Particle.SMOKE, mainTarget.getLocation().add(0, 1.0D, 0), 18, 0.25D, 0.35D, 0.25D, 0.01D);
         player.playSound(mainTarget.getLocation(), Sound.ENTITY_WITHER_AMBIENT, 0.35F, 1.8F);
-        service.applyMiniWitherBarrage(player, swordDamage, WITHER_COUNT, WITHER_HIT_MULTIPLIER, dungeonService, indicatorService);
+        int witherCount = definition.phantomCount() > 0 ? definition.phantomCount() : WITHER_COUNT;
+        double witherMultiplier = definition.phantomHitMultiplier() > 0.0D ? definition.phantomHitMultiplier() : WITHER_HIT_MULTIPLIER;
+        service.applyMiniWitherBarrage(player, swordDamage, witherCount, witherMultiplier, definition, dungeonService, indicatorService);
     }
 }

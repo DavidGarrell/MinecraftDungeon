@@ -29,6 +29,6 @@ public final class ExecuteEnchantEffect extends BaseEnchantEffect {
                              DamageIndicatorService indicatorService) {
         player.spawnParticle(Particle.SWEEP_ATTACK, mainTarget.getLocation().add(0, 1.0D, 0), 2, 0.2D, 0.2D, 0.2D, 0.0D);
         player.playSound(mainTarget.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 0.75F, 0.9F);
-        dungeonService.executeDamage(player, mainTarget, EXECUTE_DAMAGE_MULTIPLIER, indicatorService);
+        dungeonService.executeDamage(player, mainTarget, EXECUTE_DAMAGE_MULTIPLIER, indicatorService, service.indicatorStyle(definition));
     }
 }

@@ -31,7 +31,7 @@ public final class FrostbiteEnchantEffect extends BaseEnchantEffect {
                              DamageIndicatorService indicatorService) {
         player.spawnParticle(Particle.SNOWFLAKE, mainTarget.getLocation().add(0, 1.0D, 0), 18, 0.35D, 0.45D, 0.35D, 0.01D);
         player.playSound(mainTarget.getLocation(), Sound.BLOCK_GLASS_BREAK, 0.55F, 1.8F);
-        service.applyDotTicks(player, mainTarget, swordDamage, dungeonService, indicatorService,
+        service.applyDotTicks(player, mainTarget, swordDamage, definition, dungeonService, indicatorService,
                 FREEZE_TICK_MULTIPLIER, DOT_TICKS, FREEZE_TICKS, false);
     }
 }

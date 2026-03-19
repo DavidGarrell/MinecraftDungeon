@@ -29,6 +29,6 @@ public final class ThorEnchantEffect extends BaseEnchantEffect {
                              DamageIndicatorService indicatorService) {
         player.spawnParticle(Particle.ELECTRIC_SPARK, mainTarget.getLocation().add(0, 1.0D, 0), 18, 0.25D, 0.45D, 0.25D, 0.03D);
         player.playSound(mainTarget.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_IMPACT, 0.65F, 1.3F);
-        service.applyLightningStrike(player, swordDamage, LIGHTNING_HIT_MULTIPLIER, dungeonService, indicatorService);
+        service.applyLightningStrike(player, swordDamage, LIGHTNING_HIT_MULTIPLIER, definition, dungeonService, indicatorService);
     }
 }

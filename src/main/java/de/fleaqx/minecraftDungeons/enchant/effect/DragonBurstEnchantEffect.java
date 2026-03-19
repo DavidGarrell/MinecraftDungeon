@@ -33,6 +33,6 @@ public final class DragonBurstEnchantEffect extends BaseEnchantEffect {
         }
         player.spawnParticle(Particle.DRAGON_BREATH, mainTarget.getLocation().add(0, 1.0D, 0), 24, 0.45D, 0.45D, 0.45D, 0.02D);
         player.playSound(mainTarget.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 0.5F, 1.6F);
-        dungeonService.damageOwnedMobs(player, zoneDamage, mainTarget.getUniqueId(), indicatorService);
+        dungeonService.damageOwnedMobs(player, zoneDamage, mainTarget.getUniqueId(), indicatorService, service.indicatorStyle(definition));
     }
 }
