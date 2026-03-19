@@ -54,7 +54,16 @@ public class SwordService {
         int swordId = profile.selectedSword();
         int tier = Math.max(1, profile.swordLevel(swordId));
         ItemStack item = createSwordItem(player, swordId, tier, true);
+
+        ItemStack[] contents = player.getInventory().getContents();
+        for (int slot = 0; slot < contents.length; slot++) {
+            if (isManagedSword(contents[slot])) {
+                player.getInventory().setItem(slot, null);
+            }
+        }
+
         player.getInventory().setItem(0, item);
+        player.getInventory().setHeldItemSlot(0);
     }
 
     public boolean isManagedSword(ItemStack item) {
