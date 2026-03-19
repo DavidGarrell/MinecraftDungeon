@@ -58,6 +58,7 @@ public class EnchantService {
     private final AtomicInteger packetEntityIds = new AtomicInteger(2_000_000);
     private final boolean protocolLibAvailable;
     private final ProtocolManager protocolManager;
+    private final Map<UUID, BukkitRunnable> orbitingAuraTasks = new HashMap<>();
 
     public EnchantService(JavaPlugin plugin, EnchantConfigService configService, ProfileService profileService) {
         this.plugin = plugin;
@@ -369,6 +370,7 @@ public class EnchantService {
         registerEffect(new EssenceFinderEnchantEffect());
         registerEffect(new EssenceMagnetEnchantEffect());
         registerEffect(new SpeedEnchantEffect());
+        registerEffect(new SoulRingEnchantEffect());
     }
 
     private void registerEffect(EnchantEffect effect) {
@@ -487,6 +489,79 @@ public class EnchantService {
         }
     }
 
+    public void startSoulRing(Player player,
+                              BigInteger swordDamage,
+                              double hitMultiplier,
+                              EnchantDefinition definition,
+                              DungeonService dungeonService,
+                              DamageIndicatorService indicatorService) {
+        cancelSoulRing(player.getUniqueId());
+
+        BigInteger damage = scaleDamage(swordDamage, hitMultiplier);
+        if (damage.compareTo(BigInteger.ZERO) <= 0) {
+            return;
+        }
+
+        BukkitRunnable task = new BukkitRunnable() {
+            private static final int DURATION_TICKS = 200;
+            private static final int ORBIT_POINTS = 4;
+            private static final double HIT_RADIUS = 1.15D;
+            private static final int MOB_HIT_COOLDOWN = 4;
+
+            private final Map<UUID, Integer> hitCooldowns = new HashMap<>();
+            private int tick = 0;
+
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    cancelSoulRing(player.getUniqueId());
+                    return;
+                }
+
+                if (tick >= DURATION_TICKS) {
+                    player.spawnParticle(Particle.ENCHANT, player.getLocation().add(0.0D, 1.0D, 0.0D), 20, 0.35D, 0.45D, 0.35D, 0.25D);
+                    cancelSoulRing(player.getUniqueId());
+                    return;
+                }
+
+                hitCooldowns.replaceAll((mobId, cooldown) -> cooldown - 1);
+                hitCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);
+
+                List<LivingEntity> targets = dungeonService.activeAttackableOwnedMobs(player).stream()
+                        .filter(LivingEntity::isValid)
+                        .toList();
+
+                for (int orbitIndex = 0; orbitIndex < ORBIT_POINTS; orbitIndex++) {
+                    Location orbitLocation = soulRingOrbit(player, orbitIndex, ORBIT_POINTS, tick);
+                    player.spawnParticle(Particle.SOUL_FIRE_FLAME, orbitLocation, 4, 0.06D, 0.06D, 0.06D, 0.0D);
+                    player.spawnParticle(Particle.ENCHANT, orbitLocation, 3, 0.02D, 0.02D, 0.02D, 0.0D);
+
+                    for (LivingEntity target : targets) {
+                        if (hitCooldowns.containsKey(target.getUniqueId())) {
+                            continue;
+                        }
+                        if (target.getLocation().distanceSquared(orbitLocation) > HIT_RADIUS * HIT_RADIUS) {
+                            continue;
+                        }
+
+                        DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, target, damage);
+                        if (result.accepted()) {
+                            indicatorService.spawnDamage(player, target, damage, indicatorStyle(definition));
+                            player.playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 0.35F, 1.85F);
+                            player.spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0.0D, 0.9D, 0.0D), 1, 0.0D, 0.0D, 0.0D, 0.0D);
+                            hitCooldowns.put(target.getUniqueId(), MOB_HIT_COOLDOWN);
+                        }
+                    }
+                }
+
+                tick++;
+            }
+        };
+
+        orbitingAuraTasks.put(player.getUniqueId(), task);
+        task.runTaskTimer(plugin, 0L, 1L);
+    }
+
     public void applyLightningStrike(Player player,
                                       BigInteger swordDamage,
                                       double hitMultiplier,
@@ -568,6 +643,7 @@ public class EnchantService {
             case "thor" -> new Style(ChatColor.YELLOW, "⚡", true);
             case "dragon_burst" -> new Style(ChatColor.LIGHT_PURPLE, "☄", true);
             case "execute" -> new Style(ChatColor.DARK_RED, "✖", true);
+            case "soul_ring" -> new Style(ChatColor.LIGHT_PURPLE, "◎", true);
             case "soul_greed" -> new Style(ChatColor.DARK_AQUA, "✦", false);
             case "essence_finder" -> new Style(ChatColor.BLUE, "✧", false);
             default -> null;
@@ -655,6 +731,11 @@ public class EnchantService {
             return;
         }
 
+        if (protocolLibAvailable && protocolManager != null) {
+            spawnPacketMiniWitherMob(player, start, damage, definition, dungeonService, indicatorService, index, total);
+            return;
+        }
+
         Entity spawned = start.getWorld().spawnEntity(start, EntityType.WITHER);
         if (!(spawned instanceof LivingEntity wither)) {
             spawned.remove();
@@ -704,8 +785,7 @@ public class EnchantService {
                 player.spawnParticle(Particle.SMOKE, orbit, 2, 0.05D, 0.05D, 0.05D, 0.0D);
 
                 if (!fired && tick >= fireTick && !activeTargets.isEmpty()) {
-                    LivingEntity target = activeTargets.get(index % activeTargets.size());
-                    player.playSound(wither.getLocation(), Sound.ENTITY_WITHER_SHOOT, 0.45F, 1.6F);
+                    LivingEntity target = chooseWitherTarget(activeTargets, orbit, null);
                     launchPacketProjectile(player, wither.getLocation().clone().add(0.0D, 0.65D, 0.0D), target, damage,
                             dungeonService, indicatorService, Particle.SMOKE, Particle.ENCHANT, Sound.ENTITY_WITHER_SHOOT,
                             Sound.ENTITY_WITHER_HURT, 10, 0.25D, indicatorStyle(definition));
@@ -717,11 +797,113 @@ public class EnchantService {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
+    private void spawnPacketMiniWitherMob(Player player,
+                                          Location start,
+                                          BigInteger damage,
+                                          EnchantDefinition definition,
+                                          DungeonService dungeonService,
+                                          DamageIndicatorService indicatorService,
+                                          int index,
+                                          int total) {
+        int entityId = packetEntityIds.incrementAndGet();
+        UUID uuid = UUID.randomUUID();
+        if (!sendSpawnEntityPacket(player, entityId, uuid, EntityType.WITHER, start)) {
+            return;
+        }
+
+        player.spawnParticle(Particle.SMOKE, start, 8, 0.12D, 0.12D, 0.12D, 0.0D);
+        player.spawnParticle(Particle.ENCHANT, start, 4, 0.04D, 0.04D, 0.04D, 0.0D);
+
+        new BukkitRunnable() {
+            private static final int LIFETIME_TICKS = 70;
+            private static final int FIRE_INTERVAL = 14;
+
+            private int tick = 0;
+            private int lastFireTick = -FIRE_INTERVAL;
+            private UUID currentTargetId;
+
+            @Override
+            public void run() {
+                if (!player.isOnline()) {
+                    sendDestroyEntityPacket(player, entityId);
+                    cancel();
+                    return;
+                }
+
+                if (tick >= LIFETIME_TICKS) {
+                    player.spawnParticle(Particle.SMOKE, witherOrbit(player, index, total, tick), 12, 0.15D, 0.15D, 0.15D, 0.01D);
+                    sendDestroyEntityPacket(player, entityId);
+                    cancel();
+                    return;
+                }
+
+                Location orbit = witherOrbit(player, index, total, tick);
+                List<LivingEntity> activeTargets = dungeonService.activeAttackableOwnedMobs(player).stream()
+                        .filter(LivingEntity::isValid)
+                        .toList();
+                LivingEntity chosenTarget = chooseWitherTarget(activeTargets, orbit, currentTargetId);
+                if (chosenTarget != null) {
+                    currentTargetId = chosenTarget.getUniqueId();
+                    Vector lookDirection = chosenTarget.getLocation().add(0.0D, 0.8D, 0.0D).toVector().subtract(orbit.toVector());
+                    if (lookDirection.lengthSquared() > 0.0001D) {
+                        orbit.setDirection(lookDirection);
+                    }
+                }
+
+                if (!sendTeleportEntityPacket(player, entityId, orbit)) {
+                    player.spawnParticle(Particle.SMOKE, orbit, 4, 0.08D, 0.08D, 0.08D, 0.0D);
+                }
+                player.spawnParticle(Particle.SMOKE, orbit, 2, 0.05D, 0.05D, 0.05D, 0.0D);
+
+                if (chosenTarget != null && tick - lastFireTick >= FIRE_INTERVAL) {
+                    lastFireTick = tick;
+                    launchPacketProjectile(player, orbit.clone().add(0.0D, 0.65D, 0.0D), chosenTarget, damage,
+                            dungeonService, indicatorService, Particle.SMOKE, Particle.ENCHANT, Sound.ENTITY_WITHER_SHOOT,
+                            Sound.ENTITY_WITHER_HURT, 10, 0.25D, indicatorStyle(definition));
+                }
+
+                tick++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private LivingEntity chooseWitherTarget(List<LivingEntity> activeTargets, Location origin, UUID preferredTargetId) {
+        if (activeTargets == null || activeTargets.isEmpty() || origin == null) {
+            return null;
+        }
+
+        if (preferredTargetId != null) {
+            for (LivingEntity activeTarget : activeTargets) {
+                if (preferredTargetId.equals(activeTarget.getUniqueId()) && activeTarget.isValid()) {
+                    return activeTarget;
+                }
+            }
+        }
+
+        LivingEntity closest = null;
+        double closestDistance = Double.MAX_VALUE;
+        for (LivingEntity activeTarget : activeTargets) {
+            double distance = activeTarget.getLocation().distanceSquared(origin);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closest = activeTarget;
+            }
+        }
+        return closest;
+    }
+
     private Location witherOrbit(Player player, int index, int total, int tick) {
         double baseAngle = (Math.PI * 2.0D * index) / Math.max(1, total);
         double angle = baseAngle + (tick * 0.08D);
         Location base = player.getEyeLocation().clone();
         return base.add(Math.cos(angle) * 1.8D, 0.7D + (Math.sin((tick + index * 7.0D) * 0.12D) * 0.18D), Math.sin(angle) * 1.8D);
+    }
+
+    private Location soulRingOrbit(Player player, int index, int total, int tick) {
+        double baseAngle = (Math.PI * 2.0D * index) / Math.max(1, total);
+        double angle = baseAngle + (tick * 0.34D);
+        Location base = player.getLocation().clone().add(0.0D, 1.0D, 0.0D);
+        return base.add(Math.cos(angle) * 2.15D, 0.18D + (Math.sin((tick * 0.22D) + index) * 0.18D), Math.sin(angle) * 2.15D);
     }
 
     private void configureSummonedVisualMob(LivingEntity entity, double scale) {
@@ -764,6 +946,13 @@ public class EnchantService {
     private void removeEntity(Entity entity) {
         if (entity != null && entity.isValid()) {
             entity.remove();
+        }
+    }
+
+    private void cancelSoulRing(UUID playerId) {
+        BukkitRunnable activeTask = orbitingAuraTasks.remove(playerId);
+        if (activeTask != null) {
+            activeTask.cancel();
         }
     }
 
