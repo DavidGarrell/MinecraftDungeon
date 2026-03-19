@@ -154,6 +154,19 @@ public class SwordService {
         return new BuyBestResult(upgrades, lastSwordId, lastTier);
     }
 
+    public void buyBestOnDrop(Player player) {
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            BuyBestResult result = buyBest(player);
+            if (result.upgrades() > 0) {
+                String swordName = definition(result.swordId()).name();
+                player.sendMessage(ChatColor.GREEN + "Bought best sword upgrades: " + result.upgrades() + " (" + swordName + " " + roman(result.tier()) + ")");
+                return;
+            }
+
+            player.sendMessage(ChatColor.RED + "No affordable sword upgrade.");
+        });
+    }
+
     public SwordDefinition definition(int id) {
         int safe = Math.max(1, Math.min(MAX_SWORDS, id));
         return definitions.get(safe - 1);
