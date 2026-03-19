@@ -16,13 +16,17 @@ import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -459,15 +463,7 @@ public class EnchantService {
             }
 
             Location start = phantomStart(player, i, hits);
-            if (protocolLibAvailable) {
-                launchPacketMob(player, start, target, damage, dungeonService, indicatorService,
-                        EntityType.PHANTOM, Sound.ENTITY_PHANTOM_FLAP, Sound.ENTITY_PHANTOM_BITE, 12, 0.85D,
-                        Particle.SOUL_FIRE_FLAME, Particle.CLOUD, indicatorStyle(definition));
-                continue;
-            }
-
-            launchPacketProjectile(player, start, target, damage, dungeonService, indicatorService,
-                    Particle.SOUL_FIRE_FLAME, Particle.CLOUD, Sound.ENTITY_PHANTOM_FLAP, Sound.ENTITY_PHANTOM_BITE, 12, 0.85D, indicatorStyle(definition));
+            spawnPhantomStrikeMob(player, start, target, damage, definition, dungeonService, indicatorService);
         }
     }
 
@@ -486,22 +482,8 @@ public class EnchantService {
         BigInteger damage = scaleDamage(swordDamage, hitMultiplier);
         int shots = Math.max(1, count);
         for (int i = 0; i < shots; i++) {
-            LivingEntity target = mobs.get(i % mobs.size());
-            if (!target.isValid()) {
-                continue;
-            }
-
             Location start = witherStart(player, i, shots);
-            player.spawnParticle(Particle.SMOKE, start, 8, 0.12D, 0.12D, 0.12D, 0.0D);
-            player.spawnParticle(Particle.ENCHANT, start, 4, 0.04D, 0.04D, 0.04D, 0.0D);
-            if (protocolLibAvailable) {
-                launchPacketMob(player, start, target, damage, dungeonService, indicatorService,
-                        EntityType.WITHER, Sound.ENTITY_WITHER_SHOOT, Sound.ENTITY_WITHER_HURT, 10, 0.25D,
-                        Particle.SMOKE, Particle.ENCHANT, indicatorStyle(definition));
-                continue;
-            }
-            launchPacketProjectile(player, start, target, damage, dungeonService, indicatorService,
-                    Particle.SMOKE, Particle.ENCHANT, Sound.ENTITY_WITHER_SHOOT, Sound.ENTITY_WITHER_HURT, 10, 0.25D, indicatorStyle(definition));
+            spawnMiniWitherMob(player, start, damage, definition, dungeonService, indicatorService, i, shots);
         }
     }
 
@@ -602,6 +584,187 @@ public class EnchantService {
         double angle = (Math.PI * 2.0D * index) / Math.max(1, total);
         Location base = player.getEyeLocation().clone();
         return base.add(Math.cos(angle) * 1.25D, 0.45D, Math.sin(angle) * 1.25D);
+    }
+
+    private void spawnPhantomStrikeMob(Player player,
+                                       Location start,
+                                       LivingEntity target,
+                                       BigInteger damage,
+                                       EnchantDefinition definition,
+                                       DungeonService dungeonService,
+                                       DamageIndicatorService indicatorService) {
+        if (start == null || start.getWorld() == null || damage.compareTo(BigInteger.ZERO) <= 0) {
+            return;
+        }
+
+        Entity spawned = start.getWorld().spawnEntity(start, EntityType.PHANTOM);
+        if (!(spawned instanceof LivingEntity phantom)) {
+            spawned.remove();
+            return;
+        }
+
+        configureSummonedVisualMob(phantom, 0.6D);
+        player.playSound(start, Sound.ENTITY_PHANTOM_FLAP, 0.5F, 1.5F);
+
+        new BukkitRunnable() {
+            private int tick = 0;
+
+            @Override
+            public void run() {
+                if (!player.isOnline() || !phantom.isValid() || !target.isValid()) {
+                    removeEntity(phantom);
+                    cancel();
+                    return;
+                }
+
+                Location current = phantom.getLocation();
+                Vector direction = target.getLocation().add(0.0D, 0.8D, 0.0D).toVector().subtract(current.toVector());
+                double distance = direction.length();
+                if (distance <= 0.7D || tick >= 20) {
+                    player.playSound(target.getLocation(), Sound.ENTITY_PHANTOM_BITE, 0.45F, 1.7F);
+                    player.spawnParticle(Particle.CLOUD, target.getLocation().add(0, 0.8D, 0), 12, 0.18D, 0.18D, 0.18D, 0.01D);
+                    DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, target, damage);
+                    if (result.accepted()) {
+                        indicatorService.spawnDamage(player, target, damage, indicatorStyle(definition));
+                    }
+                    removeEntity(phantom);
+                    cancel();
+                    return;
+                }
+
+                Vector movement = direction.normalize().multiply(Math.min(1.15D, distance));
+                Location next = current.clone().add(movement);
+                next.setDirection(movement);
+                phantom.teleport(next);
+                player.spawnParticle(Particle.SOUL_FIRE_FLAME, next, 5, 0.08D, 0.08D, 0.08D, 0.0D);
+                player.spawnParticle(Particle.CLOUD, next, 2, 0.03D, 0.03D, 0.03D, 0.0D);
+                tick++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private void spawnMiniWitherMob(Player player,
+                                    Location start,
+                                    BigInteger damage,
+                                    EnchantDefinition definition,
+                                    DungeonService dungeonService,
+                                    DamageIndicatorService indicatorService,
+                                    int index,
+                                    int total) {
+        if (start == null || start.getWorld() == null || damage.compareTo(BigInteger.ZERO) <= 0) {
+            return;
+        }
+
+        Entity spawned = start.getWorld().spawnEntity(start, EntityType.WITHER);
+        if (!(spawned instanceof LivingEntity wither)) {
+            spawned.remove();
+            return;
+        }
+
+        configureSummonedVisualMob(wither, 0.35D);
+        suppressWitherBossBar(wither);
+        disableWitherSpawnState(wither);
+        player.spawnParticle(Particle.SMOKE, start, 8, 0.12D, 0.12D, 0.12D, 0.0D);
+        player.spawnParticle(Particle.ENCHANT, start, 4, 0.04D, 0.04D, 0.04D, 0.0D);
+
+        int lifetimeTicks = 200;
+        int fireTick = Math.min(180, 20 + (index * Math.max(1, 160 / Math.max(1, total))));
+        new BukkitRunnable() {
+            private int tick = 0;
+            private boolean fired = false;
+
+            @Override
+            public void run() {
+                if (!player.isOnline() || !wither.isValid()) {
+                    removeEntity(wither);
+                    cancel();
+                    return;
+                }
+
+                if (tick >= lifetimeTicks) {
+                    player.spawnParticle(Particle.SMOKE, wither.getLocation(), 12, 0.15D, 0.15D, 0.15D, 0.01D);
+                    removeEntity(wither);
+                    cancel();
+                    return;
+                }
+
+                List<LivingEntity> activeTargets = dungeonService.activeAttackableOwnedMobs(player).stream()
+                        .filter(LivingEntity::isValid)
+                        .toList();
+
+                Location orbit = witherOrbit(player, index, total, tick);
+                if (!activeTargets.isEmpty()) {
+                    LivingEntity lookTarget = activeTargets.get((index + (tick / 20)) % activeTargets.size());
+                    Vector lookDirection = lookTarget.getLocation().add(0.0D, 0.8D, 0.0D).toVector().subtract(orbit.toVector());
+                    if (lookDirection.lengthSquared() > 0.0001D) {
+                        orbit.setDirection(lookDirection);
+                    }
+                }
+                wither.teleport(orbit);
+                player.spawnParticle(Particle.SMOKE, orbit, 2, 0.05D, 0.05D, 0.05D, 0.0D);
+
+                if (!fired && tick >= fireTick && !activeTargets.isEmpty()) {
+                    LivingEntity target = activeTargets.get(index % activeTargets.size());
+                    player.playSound(wither.getLocation(), Sound.ENTITY_WITHER_SHOOT, 0.45F, 1.6F);
+                    launchPacketProjectile(player, wither.getLocation().clone().add(0.0D, 0.65D, 0.0D), target, damage,
+                            dungeonService, indicatorService, Particle.SMOKE, Particle.ENCHANT, Sound.ENTITY_WITHER_SHOOT,
+                            Sound.ENTITY_WITHER_HURT, 10, 0.25D, indicatorStyle(definition));
+                    fired = true;
+                }
+
+                tick++;
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+    }
+
+    private Location witherOrbit(Player player, int index, int total, int tick) {
+        double baseAngle = (Math.PI * 2.0D * index) / Math.max(1, total);
+        double angle = baseAngle + (tick * 0.08D);
+        Location base = player.getEyeLocation().clone();
+        return base.add(Math.cos(angle) * 1.8D, 0.7D + (Math.sin((tick + index * 7.0D) * 0.12D) * 0.18D), Math.sin(angle) * 1.8D);
+    }
+
+    private void configureSummonedVisualMob(LivingEntity entity, double scale) {
+        entity.setCanPickupItems(false);
+        entity.setPersistent(false);
+        entity.setRemoveWhenFarAway(false);
+        entity.setCollidable(false);
+        entity.setInvulnerable(true);
+        entity.setAI(false);
+        entity.setGravity(false);
+        entity.setSilent(true);
+        if (entity instanceof Mob mob) {
+            mob.setTarget(null);
+        }
+        if (entity.getAttribute(Attribute.GENERIC_SCALE) != null) {
+            entity.getAttribute(Attribute.GENERIC_SCALE).setBaseValue(Math.max(0.1D, scale));
+        }
+    }
+
+    private void suppressWitherBossBar(LivingEntity entity) {
+        try {
+            Method getBossBar = entity.getClass().getMethod("getBossBar");
+            Object bossBar = getBossBar.invoke(entity);
+            if (bossBar != null) {
+                Method setVisible = bossBar.getClass().getMethod("setVisible", boolean.class);
+                setVisible.invoke(bossBar, false);
+            }
+        } catch (ReflectiveOperationException ignored) {
+        }
+    }
+
+    private void disableWitherSpawnState(LivingEntity entity) {
+        try {
+            Method setInvulnerabilityTicks = entity.getClass().getMethod("setInvulnerabilityTicks", int.class);
+            setInvulnerabilityTicks.invoke(entity, 0);
+        } catch (ReflectiveOperationException ignored) {
+        }
+    }
+
+    private void removeEntity(Entity entity) {
+        if (entity != null && entity.isValid()) {
+            entity.remove();
+        }
     }
 
 
