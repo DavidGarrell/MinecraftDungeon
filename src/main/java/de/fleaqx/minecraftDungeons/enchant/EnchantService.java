@@ -482,6 +482,10 @@ public class EnchantService {
         }
 
         BigInteger damage = scaleDamage(swordDamage, hitMultiplier);
+        if (damage.compareTo(BigInteger.ZERO) <= 0) {
+            return;
+        }
+
         int shots = Math.max(1, count);
         for (int i = 0; i < shots; i++) {
             Location start = witherStart(player, i, shots);
@@ -505,7 +509,9 @@ public class EnchantService {
         BukkitRunnable task = new BukkitRunnable() {
             private static final int DURATION_TICKS = 200;
             private static final int ORBIT_POINTS = 4;
-            private static final double HIT_RADIUS = 1.15D;
+            private static final double RING_RADIUS = 2.15D;
+            private static final double RING_THICKNESS = 1.05D;
+            private static final double VERTICAL_RANGE = 1.45D;
             private static final int MOB_HIT_COOLDOWN = 4;
 
             private final Map<UUID, Integer> hitCooldowns = new HashMap<>();
@@ -527,30 +533,27 @@ public class EnchantService {
                 hitCooldowns.replaceAll((mobId, cooldown) -> cooldown - 1);
                 hitCooldowns.entrySet().removeIf(entry -> entry.getValue() <= 0);
 
-                List<LivingEntity> targets = dungeonService.activeAttackableOwnedMobs(player).stream()
-                        .filter(LivingEntity::isValid)
-                        .toList();
-
                 for (int orbitIndex = 0; orbitIndex < ORBIT_POINTS; orbitIndex++) {
                     Location orbitLocation = soulRingOrbit(player, orbitIndex, ORBIT_POINTS, tick);
                     player.spawnParticle(Particle.SOUL_FIRE_FLAME, orbitLocation, 4, 0.06D, 0.06D, 0.06D, 0.0D);
                     player.spawnParticle(Particle.ENCHANT, orbitLocation, 3, 0.02D, 0.02D, 0.02D, 0.0D);
+                }
 
-                    for (LivingEntity target : targets) {
-                        if (hitCooldowns.containsKey(target.getUniqueId())) {
-                            continue;
-                        }
-                        if (target.getLocation().distanceSquared(orbitLocation) > HIT_RADIUS * HIT_RADIUS) {
-                            continue;
-                        }
+                Location ringCenter = player.getLocation().clone().add(0.0D, 1.18D, 0.0D);
+                for (LivingEntity target : dungeonService.activeAttackableOwnedMobs(player)) {
+                    if (!target.isValid() || hitCooldowns.containsKey(target.getUniqueId())) {
+                        continue;
+                    }
+                    if (!isInsideSoulRing(target, ringCenter, RING_RADIUS, RING_THICKNESS, VERTICAL_RANGE)) {
+                        continue;
+                    }
 
-                        DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, target, damage);
-                        if (result.accepted()) {
-                            indicatorService.spawnDamage(player, target, damage, indicatorStyle(definition));
-                            player.playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 0.35F, 1.85F);
-                            player.spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0.0D, 0.9D, 0.0D), 1, 0.0D, 0.0D, 0.0D, 0.0D);
-                            hitCooldowns.put(target.getUniqueId(), MOB_HIT_COOLDOWN);
-                        }
+                    DungeonService.AttackResult result = dungeonService.onPlayerDamageMob(player, target, damage);
+                    if (result.accepted()) {
+                        indicatorService.spawnDamage(player, target, damage, indicatorStyle(definition));
+                        player.playSound(target.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 0.35F, 1.85F);
+                        player.spawnParticle(Particle.SWEEP_ATTACK, target.getLocation().add(0.0D, 0.9D, 0.0D), 1, 0.0D, 0.0D, 0.0D, 0.0D);
+                        hitCooldowns.put(target.getUniqueId(), MOB_HIT_COOLDOWN);
                     }
                 }
 
@@ -731,11 +734,6 @@ public class EnchantService {
             return;
         }
 
-        if (protocolLibAvailable && protocolManager != null) {
-            spawnPacketMiniWitherMob(player, start, damage, definition, dungeonService, indicatorService, index, total);
-            return;
-        }
-
         Entity spawned = start.getWorld().spawnEntity(start, EntityType.WITHER);
         if (!(spawned instanceof LivingEntity wither)) {
             spawned.remove();
@@ -904,6 +902,25 @@ public class EnchantService {
         double angle = baseAngle + (tick * 0.34D);
         Location base = player.getLocation().clone().add(0.0D, 1.0D, 0.0D);
         return base.add(Math.cos(angle) * 2.15D, 0.18D + (Math.sin((tick * 0.22D) + index) * 0.18D), Math.sin(angle) * 2.15D);
+    }
+
+    private boolean isInsideSoulRing(LivingEntity target,
+                                     Location ringCenter,
+                                     double ringRadius,
+                                     double ringThickness,
+                                     double verticalRange) {
+        if (target == null || ringCenter == null || !target.getWorld().getUID().equals(ringCenter.getWorld().getUID())) {
+            return false;
+        }
+
+        Location targetLocation = target.getLocation().clone().add(0.0D, 0.9D, 0.0D);
+        double dx = targetLocation.getX() - ringCenter.getX();
+        double dz = targetLocation.getZ() - ringCenter.getZ();
+        double horizontalDistance = Math.sqrt((dx * dx) + (dz * dz));
+        double verticalDistance = Math.abs(targetLocation.getY() - ringCenter.getY());
+        return horizontalDistance >= Math.max(0.0D, ringRadius - ringThickness)
+                && horizontalDistance <= ringRadius + ringThickness
+                && verticalDistance <= verticalRange;
     }
 
     private void configureSummonedVisualMob(LivingEntity entity, double scale) {
