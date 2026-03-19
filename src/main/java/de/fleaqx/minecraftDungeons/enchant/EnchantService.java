@@ -626,7 +626,10 @@ public class EnchantService {
 
         int entityId = packetEntityIds.incrementAndGet();
         UUID uuid = UUID.randomUUID();
-        sendSpawnEntityPacket(player, entityId, uuid, entityType, start);
+        if (!sendSpawnEntityPacket(player, entityId, uuid, entityType, start)) {
+            launchPacketProjectile(player, start, target, damage, dungeonService, indicatorService, trailParticle, impactParticle, launchSound, impactSound, steps, arcHeight, style);
+            return;
+        }
         player.playSound(start, launchSound, 0.5F, 1.5F);
 
         Vector from = start.toVector();
@@ -651,7 +654,12 @@ public class EnchantService {
                     location.setDirection(direction);
                 }
 
-                sendTeleportEntityPacket(player, entityId, location);
+                if (!sendTeleportEntityPacket(player, entityId, location)) {
+                    sendDestroyEntityPacket(player, entityId);
+                    launchPacketProjectile(player, start, target, damage, dungeonService, indicatorService, trailParticle, impactParticle, launchSound, impactSound, Math.max(1, steps - step), arcHeight, style);
+                    cancel();
+                    return;
+                }
                 player.spawnParticle(trailParticle, point.getX(), point.getY(), point.getZ(), 2, 0.05D, 0.05D, 0.05D, 0.0D);
 
                 if (step++ >= steps) {
@@ -668,7 +676,7 @@ public class EnchantService {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    private void sendSpawnEntityPacket(Player player, int entityId, UUID uuid, EntityType entityType, Location location) {
+    private boolean sendSpawnEntityPacket(Player player, int entityId, UUID uuid, EntityType entityType, Location location) {
         try {
             PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.SPAWN_ENTITY);
             packet.getIntegers().writeSafely(0, entityId);
@@ -684,11 +692,13 @@ public class EnchantService {
                 packet.getIntegers().writeSafely(1, 0);
             }
             protocolManager.sendServerPacket(player, packet);
+            return true;
         } catch (Exception ignored) {
+            return false;
         }
     }
 
-    private void sendTeleportEntityPacket(Player player, int entityId, Location location) {
+    private boolean sendTeleportEntityPacket(Player player, int entityId, Location location) {
         try {
             PacketContainer packet = protocolManager.createPacket(PacketType.Play.Server.ENTITY_TELEPORT);
             packet.getIntegers().writeSafely(0, entityId);
@@ -699,7 +709,9 @@ public class EnchantService {
             packet.getBytes().writeSafely(1, angleToByte(location.getPitch()));
             packet.getBooleans().writeSafely(0, false);
             protocolManager.sendServerPacket(player, packet);
+            return true;
         } catch (Exception ignored) {
+            return false;
         }
     }
 
