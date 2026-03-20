@@ -124,6 +124,10 @@ public final class MinecraftDungeons extends JavaPlugin {
         }
     }
 
+    public DungeonService getDungeonService() {
+        return dungeonService;
+    }
+
     @Override
     public void onDisable() {
         if (autoAttackService != null) {

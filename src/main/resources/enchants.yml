@@ -58,6 +58,24 @@ enchants:
       per-level: 0.00001
     packet-based: true
 
+  frost_nova:
+    display-name: "Frost Nova"
+    category: SOULS
+    icon: BLUE_ICE
+    description:
+      - "Unleashes a freezing nova around you."
+      - "Nearby mobs take burst damage and get frozen."
+    max-level: 1400
+    required-tool-level: 3
+    cost:
+      currency: SOULS
+      base: "4200"
+      growth: 1.12
+    chance:
+      base: 0.0009
+      per-level: 0.000012
+    packet-based: true
+
   chain_lightning:
     display-name: "Chain Lightning"
     category: SOULS
@@ -126,6 +144,23 @@ enchants:
       per-level: 0.00001
     packet-based: true
 
+  wither_pact:
+    display-name: "Wither Pact"
+    category: SOULS
+    icon: WITHER_ROSE
+    description:
+      - "Summons a dark wither spirit that fires 3 deadly barrages."
+    max-level: 1200
+    required-tool-level: 4
+    cost:
+      currency: SOULS
+      base: "9000"
+      growth: 1.13
+    chance:
+      base: 0.0008
+      per-level: 0.00001
+    packet-based: true
+
   inferno:
     display-name: "Inferno"
     category: SOULS
@@ -158,6 +193,24 @@ enchants:
       growth: 1.14
     chance:
       base: 0.0008
+      per-level: 0.00001
+    packet-based: true
+
+  soul_orbit:
+    display-name: "Soul Orbit"
+    category: SOULS
+    icon: SOUL_LANTERN
+    description:
+      - "Summons orbiting soul wisps around you for a short time."
+      - "The wisps fire at nearby mobs while orbiting."
+    max-level: 1400
+    required-tool-level: 5
+    cost:
+      currency: SOULS
+      base: "13000"
+      growth: 1.14
+    chance:
+      base: 0.00075
       per-level: 0.00001
     packet-based: true
 
@@ -312,6 +365,24 @@ enchants:
     chance:
       base: 0.0
       per-level: 0.0
+    packet-based: true
+
+
+  frenzy:
+    display-name: "Frenzy"
+    category: ESSENCE
+    icon: NETHERITE_SWORD
+    description:
+      - "Gain +4 attack speed for 5 seconds."
+    max-level: 1000
+    required-tool-level: 3
+    cost:
+      currency: ESSENCE
+      base: "8000"
+      growth: 1.13
+    chance:
+      base: 0.0008
+      per-level: 0.00001
     packet-based: true
 
   speed_enchant:
