@@ -567,7 +567,7 @@ public class EnchantService {
         }
 
         configureSummonedVisualMob(wither, 0.2D);
-        dungeonService.registerPrivateVisualEntity(wither, player);
+        registerPrivateVisualEntity(dungeonService, wither, player);
         suppressWitherBossBar(wither);
         disableWitherSpawnState(wither);
 
@@ -926,7 +926,7 @@ public class EnchantService {
         }
 
         configureSummonedVisualMob(phantom, 0.6D);
-        dungeonService.registerPrivateVisualEntity(phantom, player);
+        registerPrivateVisualEntity(dungeonService, phantom, player);
         player.playSound(start, Sound.ENTITY_PHANTOM_FLAP, 0.5F, 1.5F);
 
         new BukkitRunnable() {
@@ -985,7 +985,7 @@ public class EnchantService {
         }
 
         configureSummonedVisualMob(wither, 0.18D);
-        dungeonService.registerPrivateVisualEntity(wither, player);
+        registerPrivateVisualEntity(dungeonService, wither, player);
         suppressWitherBossBar(wither);
         disableWitherSpawnState(wither);
         player.spawnParticle(Particle.SMOKE, start, 8, 0.12D, 0.12D, 0.12D, 0.0D);
@@ -1224,6 +1224,28 @@ public class EnchantService {
         }
     }
 
+    private void registerPrivateVisualEntity(DungeonService dungeonService, Entity entity, Player owner) {
+        if (dungeonService == null || entity == null || owner == null) {
+            return;
+        }
+        try {
+            Method registerMethod = dungeonService.getClass().getMethod("registerPrivateVisualEntity", Entity.class, Player.class);
+            registerMethod.invoke(dungeonService, entity, owner);
+        } catch (ReflectiveOperationException ignored) {
+        }
+    }
+
+    private void unregisterPrivateVisualEntity(DungeonService dungeonService, Entity entity) {
+        if (dungeonService == null || entity == null) {
+            return;
+        }
+        try {
+            Method unregisterMethod = dungeonService.getClass().getMethod("unregisterPrivateVisualEntity", Entity.class);
+            unregisterMethod.invoke(dungeonService, entity);
+        } catch (ReflectiveOperationException ignored) {
+        }
+    }
+
     private void removeEntity(Entity entity) {
         if (entity == null) {
             return;
@@ -1233,7 +1255,7 @@ public class EnchantService {
                     ? minecraftDungeons.getDungeonService()
                     : null;
             if (dungeonService != null) {
-                dungeonService.unregisterPrivateVisualEntity(entity);
+                unregisterPrivateVisualEntity(dungeonService, entity);
             }
         } catch (Exception ignored) {
         }
