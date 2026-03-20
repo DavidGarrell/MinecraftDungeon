@@ -15,6 +15,7 @@ import de.fleaqx.minecraftDungeons.sword.SwordPerkService;
 import de.fleaqx.minecraftDungeons.rebirth.RebirthService;
 import de.fleaqx.minecraftDungeons.companion.CompanionService;
 import de.fleaqx.minecraftDungeons.util.EntityLookup;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
@@ -139,6 +140,30 @@ public class DungeonService {
 
     public void setRebirthService(RebirthService rebirthService) {
         this.rebirthService = rebirthService;
+    }
+
+    public void registerPrivateVisualEntity(Entity entity, Player owner) {
+        if (entity == null || owner == null) {
+            return;
+        }
+        visibilityService.register(entity, owner.getUniqueId());
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online.getUniqueId().equals(owner.getUniqueId())) {
+                online.showEntity(plugin, entity);
+                continue;
+            }
+            online.hideEntity(plugin, entity);
+        }
+    }
+
+    public void unregisterPrivateVisualEntity(Entity entity) {
+        if (entity == null) {
+            return;
+        }
+        visibilityService.unregister(entity);
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            online.showEntity(plugin, entity);
+        }
     }
 
     public Collection<ZoneDefinition> zones() {
